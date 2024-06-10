@@ -85,7 +85,7 @@ class HomeScreen(Screen):
 
         user_data = db.reference('users').get()
         if user_data:
-            account_data = list(user_data.values())[0]  # 첫 번째 사용자 데이터만 사용
+            account_data = list(user_data.values())[0]
             self.account_number = account_data['account_number']
             self.initial_balance = account_data['balance']
             self.remaining_limit = account_data['remaining_limit']
