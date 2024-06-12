@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRV Bank Login</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="images/logo-small.svg" alt="SRV Bank Logo">
+            <h1>SRV Bank</h1>
+        </div>
+        <form id="loginForm">
+            <h2>로그인하세요</h2>
+            <p class="log-info">계속 사용하려면 로그인하십시오</p>
+            <div class="input-group">
+                <input type="email" id="email" placeholder="이메일" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="비밀번호" required>
+            </div>
+            <a href="#" class="forgot-password">비밀번호를 잊으셨나요?</a>
+            <button type="submit">로그인</button>
+            <p class="signup">계정이 없나요? <a href="sign-up.html">회원가입하기</a></p>
+        </form>
+    </div>
+    <script src="login.js"></script>
+</body>
+</html>

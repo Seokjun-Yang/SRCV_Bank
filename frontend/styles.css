@@ -1,0 +1,93 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  background-color: #ffffff;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 15px;
+  background-color: #000000; /* Changed to make the top bar visible */
+  color: #ffffff;
+}
+
+.top-bar .time {
+  font-size: 18px;
+}
+
+.top-bar .status-icons img {
+  width: 20px;
+  margin-left: 10px;
+}
+
+.logo-container {
+  /* margin: 20px; */
+  padding-bottom: 50%;
+}
+
+.logo-container .logo {
+  width: 100%;
+  max-width: 360px;
+  margin-bottom: 30px;
+}
+
+.logo-container p {
+  font-size: 24px;
+  color: #29a98b;
+}
+
+.logo-container span {
+  font-size: 16px;
+  color: #666666;
+   
+}
+
+.welcome-message {
+  font-size: 24px;
+  color: #29a98b;
+  margin-bottom: 20px;
+  font-weight: 540;
+}
+
+.mic-container {
+  background-color: #29a98b;
+  padding: 30px 15px;
+  border-radius: 35px 35px 0 0;
+  width: calc(100% - 20px); /* Make the width responsive */
+  max-width: 480px;
+  height: auto; /* Make height auto to adapt to content */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px; /* Adjust margin to create space around the button */
+  position: fixed;
+  bottom: 20px; /* Add some space from the bottom */
+  left: 50%;
+  transform: translateX(-50%);
+  position: fixed;
+  bottom: 0;
+}
+
+.mic-container img {
+  width: 50px;
+  height: 50px;
+}
+
+.down-container {
+  align-items: center;
+  justify-content: center;
+}
