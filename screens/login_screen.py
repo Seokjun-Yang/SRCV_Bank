@@ -1,4 +1,3 @@
-import requests
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
@@ -6,6 +5,9 @@ from kivy.uix.image import Image
 from kivy.uix.screenmanager import Screen
 from screens.image_button import ImageButton
 from kivy.uix.button import Button
+from firebase_admin import db
+import requests
+
 
 fontName = 'Hancom Gothic Bold.ttf'
 
@@ -79,7 +81,22 @@ class LoginScreen(Screen):
             data = response.json()
             if 'idToken' in data:
                 self.status_label.text = f'Successfully logged in as: {email}'
-                self.manager.current = 'home'
+                # 로그인한 사용자의 localId 가져오기
+                user_id = data.get('localId')
+
+                if user_id:
+                    # user_seq_no를 얻기 위해 Firebase에서 사용자 데이터를 조회
+                    user_data = db.reference(f'users').order_by_child('email').equal_to(email).get()
+                    if user_data:
+                        user_seq_no = list(user_data.keys())[0]
+                        self.manager.current = 'home'
+                        home_screen = self.manager.get_screen('home')
+                        home_screen.load_user_data(user_seq_no)  # user_seq_no 전달
+
+                    else:
+                        self.status_label.text = 'User data not found in Firebase.'
+                else:
+                    self.status_label.text = 'User ID not found in response.'
             else:
                 self.status_label.text = f'Login error: {data["error"]["message"]}'
         except Exception as e:
