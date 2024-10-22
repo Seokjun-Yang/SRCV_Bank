@@ -82,28 +82,51 @@ class SignupScreen(Screen):
         self.add_widget(self.layout)
 
     def request_auth(self, instance):
-        client_id = 'd79bfcd3-1b00-4f8b-8ffc-aa06a317801c'  # API 발급받은 Client ID
-        redirect_uri = 'https://us-central1-bank-a752e.cloudfunctions.net/authCallback'  # 설정한 Redirect URI
-        state = '12345678912345678912345678912345'  # CSRF 방지를 위한 랜덤 문자열
+        name = self.name_input.text
+        email = self.email_input.text
+        password = self.password_input.text
+        phone = self.phone_input.text
 
-        auth_url = (
-            f"https://testapi.openbanking.or.kr/oauth/2.0/authorize?"
-            f"response_type=code&"
-            f"client_id={client_id}&"
-            f"redirect_uri={redirect_uri}&"
-            f"scope=login inquiry transfer&"
-            f"state={state}&"
-            f"auth_type=0"
-        )
-        # 웹브라우저에서 인증 URL 열기
-        threading.Thread(target=self.open_browser_and_wait_for_auth, args=(auth_url,)).start()
+        if not name or not email or not password:
+            self.status_label.text = '이름, 이메일, 비밀번호를 입력해주세요.'
+            return
+
+        try:
+            # Step 1: 입력된 사용자 정보를 Firebase에 먼저 저장
+            ref = db.reference(f'users/{name}')
+            ref.update({
+                'name': name,
+                'email': email,
+                'password': password,
+                'phone': phone
+            })
+
+            # Step 2: 금융결제원 API 호출하여 번호 인증 시작
+            client_id = 'd79bfcd3-1b00-4f8b-8ffc-aa06a317801c'
+            redirect_uri = 'https://us-central1-bank-a752e.cloudfunctions.net/authCallback'
+            state = '12345678912345678912345678912345'
+
+            auth_url = (
+                f"https://testapi.openbanking.or.kr/oauth/2.0/authorize?"
+                f"response_type=code&"
+                f"client_id={client_id}&"
+                f"redirect_uri={redirect_uri}&"
+                f"scope=login inquiry transfer&"
+                f"state={state}&"
+                f"auth_type=0"
+            )
+            # 웹브라우저에서 인증 URL 열기
+            threading.Thread(target=self.open_browser_and_wait_for_auth, args=(auth_url,)).start()
+
+        except Exception as e:
+            self.status_label.text = f'Firebase 저장 오류: {str(e)}'
 
     def open_browser_and_wait_for_auth(self, auth_url):
         webbrowser.open(auth_url)
-        Clock.schedule_interval(self.check_firebase_for_tokens, 5)  # 5초마다 확인
+        Clock.schedule_interval(self.check_firebase_for_tokens, 5)  # 5초마다 Firebase에서 token 확인
 
     def check_firebase_for_tokens(self, dt):
-        threading.Thread(target=self.fetch_user_tokens).start()  # Firebase 확인을 별도 스레드에서 실행
+        threading.Thread(target=self.fetch_user_tokens).start()  # 별도 스레드에서 token 확인
 
     def fetch_user_tokens(self):
         ref = db.reference('users')
@@ -116,6 +139,12 @@ class SignupScreen(Screen):
                     self.access_token = value['access_token']
                     self.refresh_token = value['refresh_token']
                     self.user_id = self.user_seq_no
+
+                    name = self.name_input.text
+
+                    # 인증 완료 후 계좌 정보를 가져옴
+                    if self.access_token:
+                        self.fetch_account_info(self.access_token, name)  # 여기서 key는 사용자 이름입니다.
                     # Kivy의 UI 업데이트는 Clock.schedule_once를 사용하여 메인 스레드에서 수행
                     Clock.schedule_once(lambda dt: self.update_status_label())
                     break
@@ -132,6 +161,7 @@ class SignupScreen(Screen):
         phone = self.phone_input.text
         email = self.email_input.text
         password = self.password_input.text
+
         try:
             # Firebase Authentication REST API를 사용하여 회원가입
             response = requests.post(
@@ -146,22 +176,54 @@ class SignupScreen(Screen):
             data = response.json()
             if 'idToken' in data:
                 self.status_label.text = f'Successfully signed up as: {email}'
-                # 사용자 데이터 저장
-                self.save_user_info_to_database(name, phone, email, password)  # 여기서 올바른 메서드를 호출합니다.
                 self.manager.current = 'login'
             else:
                 self.status_label.text = f'Signup error: {data["error"]["message"]}'
         except Exception as e:
             self.status_label.text = f'Error signing up: {str(e)}'
 
-    def save_user_info_to_database(self, name, phone, email, password):
-        ref = db.reference('users')
-        user_data = {
-            'name': name,
-            'phone': phone,
-            'email': email,
-            'password': password,
-        }
+    def fetch_account_info(self, access_token, name):
+        try:
+            # 계좌 목록 조회 API 호출
+            account_list_response = requests.get(
+                f'https://testapi.openbanking.or.kr/v2.0/user/me?user_seq_no={self.user_seq_no}',
+                headers={
+                    'Authorization': f'Bearer {access_token}',
+                }
+            )
 
-        ref.child(self.user_id).update(user_data)  # 기존 사용자 항목에 업데이트
-        self.status_label.text = '회원가입이 완료되었습니다!'
+            # API 요청 성공 여부 확인
+            if account_list_response.status_code != 200:
+                self.status_label.text = f'API 요청 실패: {account_list_response.status_code}'
+                return
+
+            # 계좌 목록을 추출하여 저장
+            account_list = account_list_response.json().get('res_list', [])
+
+            # 가장 최근 계좌 정보 가져오기
+            if account_list:
+                recent_account = account_list[0]
+                account_info = {
+                    'fintech_use_num': recent_account['fintech_use_num'],
+                    'bank_name': recent_account['bank_name'],
+                    'account_num_masked': recent_account['account_num_masked'],
+                    'balance_amt': 100000,  # 기본 잔액
+                    'available_amt': 90000,  # 출금 가능 금액 (잔액의 90%)
+                    'transactions': [{
+                        'amount': 0,
+                        'date': 'No Date',
+                        'description': 'no transactions',
+                        'type': '정보 없음',
+                        'balance': 0
+                    }]  # 기본 거래 내역으로 no data 설정
+                }
+
+                # Firebase의 name 항목 아래 계좌 정보를 저장
+                ref = db.reference(f'users/{name}/account')
+                ref.set(account_info)
+                self.status_label.text = '계좌 정보 및 거래 내역이 저장되었습니다.'
+            else:
+                self.status_label.text = '계좌 정보를 가져올 수 없습니다.'
+
+        except Exception as e:
+            self.status_label.text = f'계좌 정보를 가져오는 중 오류 발생: {str(e)}'

@@ -13,7 +13,6 @@ fontName = 'Hancom Gothic Bold.ttf'
 
 class LoginScreen(Screen):
     def __init__(self, **kwargs):
-
         super(LoginScreen, self).__init__(**kwargs)
 
         self.api_key = "AIzaSyDU67MIYsLtwbbpF_rnf0NcmPD_HDeGN8I"  # Firebase 프로젝트 설정에서 API 키를 확인할 수 있습니다
@@ -48,14 +47,13 @@ class LoginScreen(Screen):
         self.login_button = ImageButton(source='images/login_button.png', size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.25})
         self.login_button.bind(on_press=self.login)
 
-        # 회원가입 버튼 (텍스트만 표시하고 배경을 투명하게 설정)
+        # 회원가입 버튼
         self.signup_button = Button(text='회원가입하기', font_name=fontName, font_size=15, size_hint=(1.1, 0.05), pos_hint={'x': 0.09, 'y': 0.2}, background_color=(0, 0, 0, 0), color=(0, 0.7, 0.7, 1))
         self.signup_button.bind(on_press=self.signup)
         self.signup_label = Label(text='계정이 없나요?', font_name=fontName, font_size=15, size_hint=(0.6, 0.05), size=(150, 30), pos_hint={'x': 0.05, 'y': 0.2}, color=(0.1, 0.4, 0.8, 1))
 
         # 상태 메시지 표시 레이블
         self.status_label = Label(text='계속 사용하려면 로그인 하십시요', font_name=fontName, font_size=15, size_hint=(0.83, 0.1),
-                                  size=(self.bg_image.width * 0.8, self.bg_image.height * 0.1),
                                   color=(0.1, 0.4, 0.8, 1),
                                   pos_hint={'x': 0.08, 'y': 0.6})
 
@@ -69,37 +67,38 @@ class LoginScreen(Screen):
     def login(self, instance):
         email = self.email_input.text
         password = self.password_input.text
+
         try:
-            # Firebase Authentication REST API를 사용하여 로그인
-            response = requests.post(
-                f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.api_key}",
-                data={
-                    'email': email,
-                    'password': password,
-                    'returnSecureToken': True
-                })
-            data = response.json()
-            if 'idToken' in data:
-                self.status_label.text = f'Successfully logged in as: {email}'
-                # 로그인한 사용자의 localId 가져오기
-                user_id = data.get('localId')
+            print(f"Trying to log in with email: {email} and password: {password}")
 
-                if user_id:
-                    # user_seq_no를 얻기 위해 Firebase에서 사용자 데이터를 조회
-                    user_data = db.reference(f'users').order_by_child('email').equal_to(email).get()
-                    if user_data:
-                        user_seq_no = list(user_data.keys())[0]
-                        self.manager.current = 'home'
-                        home_screen = self.manager.get_screen('home')
-                        home_screen.load_user_data(user_seq_no)  # user_seq_no 전달
+            # Firebase 데이터베이스에서 이메일로 사용자 정보 검색
+            users_ref = db.reference('users')
+            users = users_ref.get()
 
-                    else:
-                        self.status_label.text = 'User data not found in Firebase.'
-                else:
-                    self.status_label.text = 'User ID not found in response.'
-            else:
-                self.status_label.text = f'Login error: {data["error"]["message"]}'
+            if not users:
+                print("No users found in the database")
+                self.status_label.text = 'No users found in the database.'
+                return
+
+            # Firebase에서 사용자 데이터 검색
+            for user_name, user_data in users.items():
+                print(f"Checking user: {user_name}, email: {user_data.get('email')}")
+                if user_data.get('email') == email and user_data.get('password') == password:
+                    print(f"User found: {user_name}")
+
+                    # 사용자를 찾은 경우, name 확인
+                    print(f"Logging in as {user_name}")
+
+                    # 홈 화면으로 사용자 정보 전달
+                    home_screen = self.manager.get_screen('home')
+                    home_screen.load_user_data(user_data.get('user_seq_no'), user_name)  # user_seq_no와 name 전달
+                    self.manager.current = 'home'
+                    return
+
+            print("No matching user found with given email and password")
+            self.status_label.text = 'Invalid email or password.'
         except Exception as e:
+            print(f"Error logging in: {str(e)}")
             self.status_label.text = f'Error logging in: {str(e)}'
 
     def signup(self, instance):
