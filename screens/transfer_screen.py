@@ -16,8 +16,8 @@ import requests
 class ImageButton(ButtonBehavior, Image):
     pass
 
-fontName1 = 'Hancom Gothic Bold.ttf'
-fontName2 = 'Hancom Gothic Regular.ttf'
+fontName1 = 'LINESeedKR-Bd.ttf'
+fontName2 = 'LINESeedKR-Rg.ttf'
 
 class LeftAlignedButton(ButtonBehavior, Label):
     pass
@@ -143,8 +143,8 @@ class TransferScreen(Screen):
         self.manager.current = 'home'
 
     def on_enter(self):
-        if self.sender_account and self.user_name:
-            account_data = get_account_data(self.user_name)
+        if self.sender_account and self.user_seq_no:
+            account_data = get_account_data(self.user_seq_no)
 
             if account_data is None:
                 self.status_label.text = "송금 계좌 정보를 불러올 수 없습니다."
@@ -166,11 +166,13 @@ class TransferScreen(Screen):
             return
 
         all_accounts = {}
-        for user_name, user_data in users_data.items():
+        for user_seq_no, user_data in users_data.items():
             account_data = user_data.get('account')
-            if account_data and isinstance(account_data, dict):
-                all_accounts[user_name] = {
+            user_info = user_data.get('user_info')
+            if account_data and isinstance(account_data, dict) and user_info:
+                all_accounts[user_seq_no] = {
                     'account_num_masked': account_data.get('account_num_masked', 'N/A'),
+                    'name': user_info.get('name', 'Unknown')
                 }
 
         if not all_accounts:
@@ -208,7 +210,7 @@ class TransferScreen(Screen):
 
         # 모든 사용자들의 계좌 목록 추가
         for account_key, account in all_accounts.items():
-            button_text = f"[color=#000000]{account_key}[/color]\n[color=#29A98B]{account['account_num_masked']}[/color]"
+            button_text = f"[color=#000000]{account['name']}[/color]\n[color=#29A98B]{account['account_num_masked']}[/color]"
 
             account_button = Button(
                 text=button_text,
@@ -246,12 +248,12 @@ class TransferScreen(Screen):
         # 팝업 열기
         self.account_popup.open()
 
-    def select_account(self, user_name):
+    def select_account(self, user_seq_no):
         """계좌 선택 후 데이터를 처리하는 함수"""
-        account_data = get_account_data(user_name)
+        account_data = get_account_data(user_seq_no)
         if account_data:
             self.receiver_account_input.text = account_data['account_num_masked']
-            self.selected_receiver_account = user_name
+            self.selected_receiver_account = user_seq_no
             self.account_popup.dismiss()
         else:
             self.status_label.text = "계좌 정보를 불러올 수 없습니다."
@@ -264,7 +266,7 @@ class TransferScreen(Screen):
             self.status_label.text = '모든 필드를 입력하세요.'
             return
 
-        result_message = transfer_money(self.user_name, self.sender_account, receiver_account, amount)
+        result_message = transfer_money(self.user_seq_no, self.sender_account, receiver_account, amount)
         self.status_label.text = result_message
 
         self.update_home_balance_and_transactions()
@@ -278,19 +280,19 @@ class TransferScreen(Screen):
             home_screen.refresh_balance()
             home_screen.load_and_display_transactions()
 
-def get_account_data(user_name):
-    """Firebase에서 user_name을 통해 계좌 데이터를 가져오는 함수"""
-    ref = db.reference(f'users/{user_name}/account')
+def get_account_data(user_seq_no):
+    """Firebase에서 user_seq_no을 통해 계좌 데이터를 가져오는 함수"""
+    ref = db.reference(f'users/{user_seq_no}/account')
     return ref.get()
 
-def update_account_balance(user_name, new_balance):
+def update_account_balance(user_seq_no, new_balance):
     """Firebase에서 계좌 잔액을 업데이트하는 함수"""
-    ref = db.reference(f'users/{user_name}/account')
+    ref = db.reference(f'users/{user_seq_no}/account')
     ref.update({'balance_amt': new_balance})
 
-def record_transaction(user_name, amount, transaction_type, description, new_balance):
+def record_transaction(user_seq_no, amount, transaction_type, description, new_balance):
     """거래 내역 기록 함수 """
-    transaction_ref = db.reference(f'users/{user_name}/account/transactions')
+    transaction_ref = db.reference(f'users/{user_seq_no}/account/transactions')
     transactions = transaction_ref.get()
 
     # 초기 거래 데이터를 'initial'로 지정했다면 삭제
@@ -312,13 +314,17 @@ def record_transaction(user_name, amount, transaction_type, description, new_bal
         'type': transaction_type,
         'description': description,
         'balance': new_balance,
-        'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        'date': datetime.now().strftime('%Y.%m.%d')
     })
 
-def transfer_money(sender_name, sender_account, receiver_name, amount):
-    """송금 기능 구현 함수 (users/{name}/account 기반)"""
-    sender_data = get_account_data(sender_name)
-    receiver_data = get_account_data(receiver_name)
+def transfer_money(sender_seq_no, sender_account, receiver_seq_no, amount):
+    """송금 기능 구현 함수 (users/{user_seq_no}/account 기반)"""
+    sender_data = get_account_data(sender_seq_no)
+    receiver_data = get_account_data(receiver_seq_no)
+
+    # 송신자와 수신자의 이름 가져오기
+    sender_name = db.reference(f'users/{sender_seq_no}/user_info/name').get()
+    receiver_name = db.reference(f'users/{receiver_seq_no}/user_info/name').get()
 
     if sender_data is None:
         return "송금 계좌 정보를 불러올 수 없습니다."
@@ -331,10 +337,10 @@ def transfer_money(sender_name, sender_account, receiver_name, amount):
     sender_new_balance = int(sender_data['balance_amt']) - int(amount)
     receiver_new_balance = int(receiver_data['balance_amt']) + int(amount)
 
-    update_account_balance(sender_name, sender_new_balance)
-    update_account_balance(receiver_name, receiver_new_balance)
+    update_account_balance(sender_seq_no, sender_new_balance)
+    update_account_balance(receiver_seq_no, receiver_new_balance)
 
-    record_transaction(sender_name, amount, '출금', f'{receiver_name}에게 송금', sender_new_balance)
-    record_transaction(receiver_name, amount, '입금', f'{sender_name}로부터 입금', receiver_new_balance)
+    record_transaction(sender_seq_no, amount, '출금', f'{receiver_name}에게 송금', sender_new_balance)
+    record_transaction(receiver_seq_no, amount, '입금', f'{sender_name}로부터 입금', receiver_new_balance)
 
     return f'{amount}원이 {receiver_name}에게 송금되었습니다.'

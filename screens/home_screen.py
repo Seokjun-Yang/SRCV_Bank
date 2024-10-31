@@ -6,9 +6,12 @@ from kivy.uix.image import Image
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.boxlayout import BoxLayout
+from PIL import Image as PILImage
+from kivy.uix.popup import Popup
+from kivy.uix.scrollview import ScrollView
 
-fontName1 = 'Hancom Gothic Bold.ttf'
-fontName2 = 'Hancom Gothic Regular.ttf'
+fontName1 = 'LINESeedKR-Bd.ttf'
+fontName2 = 'LINESeedKR-Rg.ttf'
 
 class ImageButton(ButtonBehavior, Image):
     pass
@@ -17,115 +20,120 @@ class HomeScreen(Screen):
     def __init__(self, **kwargs):
         super(HomeScreen, self).__init__(**kwargs)
         self.layout = FloatLayout()
-        self.sender_account = None  # sender_account 초기화 추가
-        self.balance_label = None  # balance_label 초기화
-        self.setup_ui()
-        self.add_widget(self.layout)
+        self.sender_account = None
+        self.balance_label = None
         self.notifications_enabled = False
         self.accounts_data = []
-        self.sender_account = None
+
+        self.setup_ui()
+        self.add_widget(self.layout)
 
     def setup_ui(self):
         # 배경 이미지
-        self.bg_image = Image(source='images/background.png', allow_stretch=True, keep_ratio=False)
+        self.bg_image = Image(source='images/home_background.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg_image)
-        # 프로필 사진
-        self.profile_image = Image(source='images/profile_picture.png', size_hint=(0.1, 0.1),
-                                   pos_hint={'x': 0.06, 'y': 0.88})
+
+        # 상단 사용자 정보 영역
+        self.profile_image = Image(source='images/profile_picture.png', allow_stretch=True, keep_ratio=False,
+            size_hint=(0.116, 0.058), pos_hint={'x': 0.076, 'top': 0.956}
+        )
         self.layout.add_widget(self.profile_image)
-        # 설정 버튼
-        self.settings_button = ImageButton(source='images/settings_icon.png', size_hint=(0.1, 0.1),
-                                           pos_hint={'x': 0.6, 'y': 0.88})
-        self.settings_button.bind(on_press=self.open_settings)
-        self.layout.add_widget(self.settings_button)
-        # 알림 버튼
-        self.notifications_button = ImageButton(source='images/notifications_off.png', size_hint=(0.1, 0.1),
-                                                pos_hint={'x': 0.73, 'y': 0.88})
-        self.notifications_button.bind(on_press=self.toggle_notifications)
-        self.layout.add_widget(self.notifications_button)
-        # 메뉴 버튼
-        self.menu_button = ImageButton(source='images/menu_icon.png', size_hint=(0.1, 0.1),
-                                       pos_hint={'x': 0.86, 'y': 0.88})
-        self.menu_button.bind(on_press=self.open_menu)
+
+        self.welcome_label = Label(text="환영", font_name=fontName1, font_size=19, color=(1, 1, 1, 1), halign='left', valign='middle',
+                                   size_hint=(0.5, None), height=30, pos_hint={'x': 0.22, 'top': 0.95})
+        self.welcome_label.bind(size=self.welcome_label.setter('text_size'))
+        self.layout.add_widget(self.welcome_label)
+
+        self.menu_button = ImageButton(source='images/menu_icon.png', allow_stretch=True, keep_ratio=False,
+                                           size_hint=(0.083, 0.042), pos_hint={'x': 0.843, 'top': 0.948})
+        self.menu_button.bind(on_press=self.show_menu_popup)
         self.layout.add_widget(self.menu_button)
-        # 계좌 목록 이미지
-        self.account_bg_image = Image(source='images/account_background.png', size_hint=(0.9, 0.4),
-                                      pos_hint={'x': 0.05, 'y': 0.57})
-        self.layout.add_widget(self.account_bg_image)
 
-        self.icon_image = Image(source='images/icon.png', size_hint=(0.1, 0.1), pos_hint={'x': 0.1, 'y': 0.78})
-        self.layout.add_widget(self.icon_image)
+        # 카드형 계좌 정보 영역
+        self.account_card = Image(source='images/account.png', allow_stretch=True, keep_ratio=False,
+                                  size_hint=(0.85, 0.25), pos_hint={'center_x': 0.5, 'top': 0.86})
+        self.layout.add_widget(self.account_card)
 
-        self.transaction_button = Button(text='거래내역', font_name=fontName1, font_size=16, size_hint=(0.1, 0.1),
-                                         pos_hint={'x': 0.23, 'y': 0.65}, background_color=(0, 0, 0, 0),
-                                         color=(1, 1, 1, 1))
-        self.transaction_button.bind(on_press=self.show_transactions)
-        self.layout.add_widget(self.transaction_button)
+        self.account_number_label = Label(text="계좌번호", font_name=fontName1, font_size=19, color=(1, 1, 1, 1), halign='left', valign='middle',
+                                          size_hint=(0.7, None), height=30, pos_hint={'x': 0.12, 'top': 0.85})
+        self.account_number_label.bind(size=self.account_number_label.setter('text_size'))
+        self.layout.add_widget(self.account_number_label)
 
-        # 계좌 잔액 표시 라벨 추가
-        self.balance_label = Label(text='', font_name=fontName1, font_size=22, size_hint=(0.45, 0.1),
-                                   pos_hint={'x': 0.28, 'y': 0.72}, color=(1, 1, 1, 1))
+        self.alias_label = Label(text="통장이름", font_name=fontName2, font_size=15, color=(1, 1, 1, 1),
+                                 size_hint=(0.403, 0.018), pos_hint={'x': 0.055, 'top': 0.811})
+        self.layout.add_widget(self.alias_label)
+
+        self.icon = Image(source='images/icon.png', allow_stretch=True, keep_ratio=False,
+                          size_hint=(0.1, 0.05), pos_hint={'x': 0.783, 'top': 0.845})
+        self.layout.add_widget(self.icon)
+
+        self.balance_shadow_label = Label(text="잔액", font_name=fontName1, font_size=35, color=(0.553, 0.725, 0.573, 1),
+                                          size_hint=(0.503, 0.035), pos_hint={'center_x': 0.505, 'top': 0.726})
+        self.layout.add_widget(self.balance_shadow_label)
+        self.balance_label = Label(text="잔액", font_name=fontName1, font_size=35, color=(1, 1, 1, 1),
+                                   size_hint=(0.503, 0.035), pos_hint={'center_x': 0.5, 'top': 0.731})
         self.layout.add_widget(self.balance_label)
 
-
-        # 송금 버튼 추가 (초기에는 버튼이 비활성화되어 있음)
-        self.transfer_button = Button(text='송금', font_name=fontName1, font_size=16, size_hint=(0.1, 0.1),
-                                      pos_hint={'x': 0.7, 'y': 0.65}, background_color=(0, 0, 0, 0),
-                                      color=(1, 1, 1, 1))
+        # 송금 버튼
+        self.transfer_button = ImageButton(source='images/transfer_button.png', allow_stretch=True, keep_ratio=False,
+                                           size_hint=(0.39, 0.12), pos_hint={'x': 0.54, 'top': 0.586})
         self.transfer_button.bind(on_press=self.on_transfer_button_pressed)
         self.layout.add_widget(self.transfer_button)
 
-        # 거래 내역
-        self.last_transaction_label = Label(text='최근 내역', font_name=fontName1, font_size=18, size_hint=(0.1, 0.1),
-                                            pos_hint={'x': 0.11, 'y': 0.57}, color=(0.16, 0.66, 0.54, 1))
+        # 거래 내역 영역
+        self.last_transaction_label = Label(text="거래 내역", font_name=fontName1, font_size=20, color=(0, 0, 0, 1),
+                                            size_hint=(0.203, 0.018), pos_hint={'x': 0.07, 'top': 0.485})
         self.layout.add_widget(self.last_transaction_label)
 
         # 거래 내역 레이아웃 추가 (최근 내역 라벨 바로 아래에 위치시킴)
-        self.transaction_layout = BoxLayout(orientation='vertical', size_hint=(1, None), height=0, padding=[0, 0],
-                                            spacing=5, pos_hint={'x': 0, 'top': 0.5})  # pos_hint top 값을 0.53으로 조정
+        self.transaction_layout = BoxLayout(orientation='vertical', size_hint=(0.9, None), height=179, padding=[10, 5],
+                                            spacing=5, pos_hint={'x': 0.05, 'top': 0.37})
         self.layout.add_widget(self.transaction_layout)
 
-        # 거래 내역을 불러와 표시
+        # 거래 내역 불러오기
         self.load_and_display_transactions()
 
-    def load_user_data(self, user_seq_no, user_name):
+        #하단 메뉴 영역
+        self.home_button = ImageButton(source='images/home_icon.png', allow_stretch=True, keep_ratio=False,
+                                           size_hint=(0.073, 0.036), pos_hint={'x': 0.176, 'top': 0.081})
+        self.layout.add_widget(self.home_button)
+
+        self.voice_button = ImageButton(source='images/voice_icon.png', allow_stretch=True,
+                                           size_hint=(0.18, 0.09), pos_hint={'center_x': 0.5, 'top': 0.105})
+        self.layout.add_widget(self.voice_button)
+
+        self.info_button = ImageButton(source='images/info_icon.png', allow_stretch=True, keep_ratio=False,
+                                           size_hint=(0.073, 0.036), pos_hint={'x': 0.753, 'top': 0.081})
+        self.layout.add_widget(self.info_button)
+
+
+    def load_user_data(self, user_seq_no):
         self.user_seq_no = user_seq_no
-        self.user_name = user_name
+        # Firebase에서 정보 불러오기
+        user_info_ref = db.reference(f'users/{self.user_seq_no}/user_info')
+        user_info = user_info_ref.get()
 
-        # Firebase에서 users/{name}/account 항목에서 계좌 정보 불러오기
-        user_account_ref = db.reference(f'users/{self.user_name}/account')
+        if user_info:
+            self.user_name = user_info.get('name', 'Unknown')
+            self.welcome_label.text = f"안녕하세요, {self.user_name}님!"
+
+        # Firebase에서 계좌 정보 불러오기
+        user_account_ref = db.reference(f'users/{self.user_seq_no}/account')
         account_info = user_account_ref.get()
+        if account_info:
+            account_number = account_info.get('account_num_masked', 'N/A')
+            self.account_number_label.text = str(account_number)
 
-        if not account_info:
-            return
+            fintech_use_num = account_info.get('fintech_use_num', '')
+            self.alias_label.text = f'SRV{fintech_use_num[-4:]} 통장'
 
-        # 환영 메시지에 이름 표시
-        self.welcome_label = Label(text=f'{self.user_name}님,\n반갑습니다!', font_name=fontName1,
-                                   font_size=18, size_hint=(0.45, 0.1), pos_hint={'x': 0.1, 'y': 0.88},
-                                   color=(0.1, 0.4, 0.8, 1))
-        self.layout.add_widget(self.welcome_label)
+            balance_amt = account_info.get('balance_amt', 0)
+            self.balance_label.text = f'{balance_amt:,}원'
+            balance_amt = account_info.get('balance_amt', 0)
+            self.balance_shadow_label.text = f'{balance_amt:,}원'
 
-        # 계좌 번호 표시 (account_num_masked)
-        account_number = account_info.get('account_num_masked', 'N/A')
-        account_number_label = Label(text=str(account_number), font_name=fontName1, font_size=17,
-                                     size_hint=(0.45, 0.1), pos_hint={'x': 0.17, 'y': 0.793},
-                                     color=(1, 1, 1, 1))
-        self.layout.add_widget(account_number_label)
-
-        # 통장 이름 표시 (fintech_use_num의 뒷자리 4개)
-        fintech_use_num = account_info.get('fintech_use_num', '')
-        account_name = f'SRV{fintech_use_num[-4:]} 통장'
-        alias_label = Label(text=str(account_name), font_name=fontName2, font_size=13,
-                            size_hint=(0.45, 0.1), pos_hint={'x': 0.115, 'y': 0.768},
-                            color=(1, 1, 1, 1))
-        self.layout.add_widget(alias_label)
-
-        # 잔액 표시 (balance_amt)
-        balance_amt = account_info.get('balance_amt', 0)
-        self.balance_label.text = f'{balance_amt}원'
-
-        self.sender_account = fintech_use_num  # 송금할 계좌 정보 저장
-        self.load_and_display_transactions()  # 거래 내역을 올바른 sender_account로 표시
+            self.sender_account = fintech_use_num
+            self.load_and_display_transactions()
 
     def refresh_balance(self):
         """송금 후 잔액을 업데이트하는 함수"""
@@ -139,7 +147,7 @@ class HomeScreen(Screen):
         if self.sender_account:
             transfer_screen = self.manager.get_screen('transfer')
             transfer_screen.sender_account = self.sender_account
-            transfer_screen.user_name = self.user_name  # user_name 전달
+            transfer_screen.user_seq_no = self.user_seq_no
             transfer_screen.sender_account_label.text = f"송금할 계좌: {self.sender_account}"
             self.manager.current = 'transfer'
         else:
@@ -147,14 +155,41 @@ class HomeScreen(Screen):
 
     def load_and_display_transactions(self):
         if not self.sender_account:
-            print("No selected account to display transactions")
             return
 
         # Firebase에서 현재 표시된 계좌의 거래 데이터를 가져옵니다.
-        transactions_ref = db.reference(f'users/{self.user_name}/account/transactions')
+        transactions_ref = db.reference(f'users/{self.user_seq_no}/account/transactions')
         transactions_data = transactions_ref.get()
+        self.transaction_layout.clear_widgets()
 
-        # 거래 내역을 처리할 때, 리스트와 딕셔너리 구분
+        # 거래 내역이 없거나 초기 값만 있는 경우 확인
+        if not transactions_data or (
+                isinstance(transactions_data, list) and len(transactions_data) == 1 and
+                transactions_data[0].get('amount') == 0 and
+                transactions_data[0].get('balance') == 0 and
+                transactions_data[0].get('date') == "No Date" and
+                transactions_data[0].get('description') == "no transactions" and
+                transactions_data[0].get('type') == "정보 없음"
+        ):
+            empty_layout = FloatLayout(size_hint=(None, None), size=(200, 350))
+            empty_layout.pos_hint = {'center_x': 0.5, 'top': 0.2}  # 위치 조정
+
+            # 빈 거래 내역 이미지 추가
+            empty_image = Image(source='images/empty_basket.jpg',
+                                size_hint=(None, None), size=(180, 180), pos_hint={'center_x': 0.5, 'top': 0.4})
+            empty_layout.add_widget(empty_image)
+
+            # 거래 내역 없음 텍스트 추가
+            no_transactions_label = Label(text="거래 내역이 없습니다", font_name=fontName1, font_size=20,
+                                          color=(0.267, 0.388, 0.278, 1), size_hint=(None, None), size=(200, 50), pos=(90, 110),
+                                          text_size=(200, None), halign="center", valign="middle")
+            no_transactions_label.bind(size=no_transactions_label.setter('text_size'))
+            empty_layout.add_widget(no_transactions_label)
+            # 레이아웃에 빈 상태 레이아웃 추가
+            self.transaction_layout.add_widget(empty_layout)
+
+            return
+
         if isinstance(transactions_data, list):
             transactions = list(enumerate(transactions_data))  # 리스트인 경우
         elif isinstance(transactions_data, dict):
@@ -163,84 +198,142 @@ class HomeScreen(Screen):
             print("Unexpected transactions data format")
             return
 
-        # 거래 내역 레이아웃을 초기화합니다.
-        self.transaction_layout.clear_widgets()
-
         # 거래 내역 간의 간격을 줄이기 위해 spacing 값을 줄임
-        self.transaction_layout.spacing = 5  # 간격을 줄이기 위해 spacing을 최소화
+        self.transaction_layout.spacing = 0  # 간격을 줄이기 위해 spacing을 최소화
 
         # 각 거래 데이터를 화면에 표시합니다.
-        for key, transaction in sorted(transactions, reverse=True):  # 역순으로 정렬
-            if not transaction:  # 거래가 None이 아닌지 확인
+        for i, (key, transaction) in enumerate(sorted(transactions, key=lambda x: x[0], reverse=True)):
+            if not transaction:
                 continue
 
             amount = transaction.get('amount', 0)
             date = transaction.get('date', '날짜 없음')
             description = transaction.get('description', '설명 없음')
             transaction_type = transaction.get('type', '거래 유형 없음')
-            remaining_balance = transaction.get('balance', '잔액 없음')
 
             # 거래 내역을 포함할 레이아웃 생성
-            transaction_layout = FloatLayout(size_hint_y=None, height=70)
+            transaction_layout = FloatLayout(size_hint_y=None, height=80)
 
-            # 날짜 및 시간 레이블 추가
-            datetime_label = Label(text=str(date), font_name=fontName2, font_size=15, color=(0.5, 0.5, 0.5, 1),
-                                   size_hint=(None, None), pos_hint={'x': 0.14, 'y': 0.85})
-            transaction_layout.add_widget(datetime_label)
+            if i == 0:  # 역순이므로 첫 번째 항목이 가장 최근 거래
+                with transaction_layout.canvas.before:
+                    last_transaction_image = Image(source='images/last_transaction.png', allow_stretch=True,
+                                                   keep_ratio=False, size_hint=(None, None), size=(340, 90),
+                                                   pos_hint={'center_x': 0.5, 'y': 0.08})
+                    transaction_layout.add_widget(last_transaction_image)
 
             # 설명 레이블 추가
-            description_label = Label(text=str(description), font_name=fontName1, font_size=22,
-                                      color=(0, 0.7, 0.7, 1), size_hint=(None, None), size=(400,30),
-                                      pos_hint={'x': 0.065, 'top': 1.45}, text_size=(400, None), halign='left')
+            description_label = Label(
+                text=str(description), font_name=fontName1, font_size=19, color=(0, 0, 0, 1),
+                size_hint=(None, None), size=(400, 30), pos_hint={'x': 0.06, 'y': 0.62},
+                halign='left', valign='middle', text_size=(400, None)
+            )
             transaction_layout.add_widget(description_label)
 
+            # 날짜 및 시간 레이블 추가
+            datetime_label = Label(
+                text=str(date), font_name=fontName1, font_size=13, color=(0.5, 0.5, 0.5, 1),
+                size_hint=(None, None), size=(100, 70), pos_hint={'x': 0.06, 'y': 0.02},
+                halign='left', valign='middle', text_size=(100, 70)
+            )
+            transaction_layout.add_widget(datetime_label)
+
             # 거래 금액 레이블 추가
-            amount_label = Label(text=f"{'-' if transaction_type == '출금' else ''}{int(amount):,}원",
-                                 font_name=fontName1,
-                                 font_size=19, color=(1, 0, 0, 1) if transaction_type == '출금' else (0, 0.5, 0, 1),
-                                 size_hint=(None, None), size=(150, 30),  # 레이블 크기 지정
-                                 pos_hint={'right': 0.95, 'top': 1.5},
-                                 text_size=(150, None), halign='right')  # 텍스트 크기 및 우측 정렬
+            amount_label = Label(
+                text=f"{'+ ' if transaction_type == '입금' else '- ' if transaction_type == '출금' else ''}{int(amount):,}",
+                font_name=fontName1, font_size=19,
+                color=(0.68, 0.29, 0.29, 1) if transaction_type == '출금' else (0.29, 0.36, 0.29, 1),
+                size_hint=(None, None), size=(100, 70), pos_hint={'x': 0.62, 'y': 0.22},
+                halign='right', valign='middle', text_size=(100, 70)
+            )
             transaction_layout.add_widget(amount_label)
 
-            # 남은 잔액 레이블 추가
-            balance_label = Label(text=f"잔액: {int(remaining_balance)}원", font_name=fontName2, font_size=12,
-                                  color=(0.5, 0.5, 0.5, 1), size_hint=(None, None), size=(150, 30),  # 레이블 크기 지정
-                                  pos_hint={'right': 0.945, 'y': 0.8},
-                                  text_size=(150, None), halign='right')  # 텍스트 크기 및 우측 정렬
-            transaction_layout.add_widget(balance_label)
-
-            # 구분선 이미지 추가
-            separator_image = Image(source='images/separator.png', size_hint=(1, None), height=2,  # 이미지의 높이를 조절
-                                    pos_hint={'center_x': 0.5, 'y': 0.7})  # y 위치 조정으로 구분선 위치 설정
-            transaction_layout.add_widget(separator_image)
-
             # 거래 내역 레이아웃을 맨 위에 추가
-            self.transaction_layout.add_widget(transaction_layout, index=0)  # 가장 위에 추가
+            self.transaction_layout.add_widget(transaction_layout, index=0)
 
         # 거래 내역 레이아웃의 높이를 동적으로 설정
         self.transaction_layout.height = len(transactions) * 70  # 레이블 수에 따라 동적 높이 설정
 
-    def open_settings(self, instance):
-        print("Settings button pressed")
-
-    def toggle_notifications(self, instance):
-        self.notifications_enabled = not self.notifications_enabled
-        if self.notifications_enabled:
-            self.notifications_button.source = 'images/notifications_on.png'
-            print("Notifications enabled")
-        else:
-            self.notifications_button.source = 'images/notifications_off.png'
-            print("Notifications disabled")
-
     def open_menu(self, instance):
         print("Menu button pressed")
 
-    def show_transactions(self, instance):
-        print("Transaction button pressed")
+    def show_menu_popup(self, instance):
+        """팝업 창에 메뉴를 표시하는 함수"""
+        # 팝업 레이아웃 생성
+        popup_layout = BoxLayout(orientation='vertical', padding=[20, 20, 20, 20], spacing=10)
 
-    def transfer_money(self, instance):
-        print("Transfer button pressed")
+        # 닫기 버튼 이미지 (오른쪽 상단에 위치)
+        close_button = ImageButton(source='images/close_button.png', size_hint=(None, None), size=(30, 30),
+                                   pos_hint={'right': 1, 'top': 6})
+
+        # 상단에 닫기 버튼 추가를 위한 상단 레이아웃
+        top_layout = FloatLayout(size_hint=(1, None), height=30)
+        top_layout.add_widget(close_button)
+
+        # 메뉴 레이아웃
+        menu_layout = BoxLayout(orientation='vertical', spacing=15)
+
+        profile_image = Image(source='images/profile_picture.png', size_hint=(0.2, None), height=80,
+                              pos_hint={'center_x': 0.5})
+        name_label = Label(text='MAMADKARIMOV\nNAMOZ님\nSRV Bank 고객님', font_name=fontName1, font_size=16,
+                           size_hint=(1, None), height=80, halign='center', valign='middle', color=(1, 1, 1, 1))
+        name_label.bind(size=name_label.setter('text_size'))
+
+        # 프로필과 이름 추가
+        popup_layout.add_widget(profile_image)
+        popup_layout.add_widget(name_label)
+
+        # 메뉴 항목 추가
+        menu_items = [
+            ("홈페이지", 'images/home_icon.png'),
+            ("마이데이터", 'images/data_icon.png'),
+            ("마이카드", 'images/card_icon.png'),
+            ("설정", 'images/setting_icon.png'),
+            ("회사 소개", 'images/company_icon.png'),
+            ("문의하기", 'images/mail_icon.png'),
+            ("앱 평가하기", 'images/star_icon.png'),
+        ]
+
+        for item_text, item_icon in menu_items:
+            menu_item = self.create_menu_item(item_text, item_icon)
+            menu_layout.add_widget(menu_item)
+
+        # 로그아웃 버튼 추가 (맨 아래에 배치)
+        logout_button = self.create_menu_item("로그아웃", 'images/logout_icon.png')
+        logout_button.children[1].bind(on_press=self.logout)  # 로그아웃 동작 연결
+        menu_layout.add_widget(logout_button)
+
+        # 팝업 창 레이아웃에 닫기 버튼과 메뉴 레이아웃 추가
+        popup_layout.add_widget(top_layout)
+        popup_layout.add_widget(menu_layout)
+
+        # 팝업 창 생성, 배경을 이미지로 설정
+        self.menu_popup = Popup(title='', content=popup_layout,
+                                size_hint=(0.9, 0.9),
+                                background='images/menu_background.png',  # 배경 이미지를 팝업 배경으로 설정
+                                background_color=(1, 1, 1, 1),  # 필요시 투명도 설정 가능
+                                auto_dismiss=True)
+
+        # 닫기 버튼 동작
+        close_button.bind(on_press=self.menu_popup.dismiss)
+
+        # 팝업 창 열기
+        self.menu_popup.open()
+
+    def create_menu_item(self, text, icon_path):
+        """아이콘과 텍스트가 있는 메뉴 항목을 생성하는 함수"""
+        menu_item_layout = BoxLayout(orientation='horizontal', padding=10, spacing=10, size_hint=(1, None), height=40)
+
+        # 아이콘 이미지
+        icon = Image(source=icon_path, size_hint=(None, None), size=(30, 30))
+        menu_item_layout.add_widget(icon)
+
+        # 메뉴 항목 레이블
+        label = Label(text=text, font_name=fontName2, font_size=14, size_hint=(1, None), height=20,
+                      halign='left', valign='middle')
+        label.bind(size=label.setter('text_size'))  # 텍스트 크기에 맞춰 정렬
+        menu_item_layout.add_widget(label)
+
+        return menu_item_layout
 
 class MyApp(App):
     def build(self):

@@ -8,8 +8,7 @@ from kivy.uix.button import Button
 from firebase_admin import db
 import requests
 
-
-fontName = 'Hancom Gothic Bold.ttf'
+fontName = 'LINESeedKR-Bd.ttf'
 
 class LoginScreen(Screen):
     def __init__(self, **kwargs):
@@ -62,6 +61,12 @@ class LoginScreen(Screen):
         self.layout.add_widget(self.signup_button)
         self.layout.add_widget(self.signup_label)
 
+        # 얼굴인증 촬영 테스트 버튼
+        self.second_verification_button = ImageButton(source='images/profile_picture.png', size_hint=(0.9, 0.1),
+                                                      pos_hint={'x': 0.07, 'y': 0.1})
+        self.second_verification_button.bind(on_press=self.test_verification)
+        self.layout.add_widget(self.second_verification_button)
+
         self.add_widget(self.layout)
 
     def login(self, instance):
@@ -69,37 +74,30 @@ class LoginScreen(Screen):
         password = self.password_input.text
 
         try:
-            print(f"Trying to log in with email: {email} and password: {password}")
-
             # Firebase 데이터베이스에서 이메일로 사용자 정보 검색
             users_ref = db.reference('users')
             users = users_ref.get()
 
             if not users:
-                print("No users found in the database")
                 self.status_label.text = 'No users found in the database.'
                 return
 
             # Firebase에서 사용자 데이터 검색
-            for user_name, user_data in users.items():
-                print(f"Checking user: {user_name}, email: {user_data.get('email')}")
-                if user_data.get('email') == email and user_data.get('password') == password:
-                    print(f"User found: {user_name}")
+            for user_seq_no, user_data in users.items():
+                user_info = user_data.get('user_info')
+                if not user_info:
+                    continue
 
-                    # 사용자를 찾은 경우, name 확인
-                    print(f"Logging in as {user_name}")
-
+                if user_info.get('email') == email and user_info.get('password') == password:
                     # 홈 화면으로 사용자 정보 전달
                     home_screen = self.manager.get_screen('home')
-                    home_screen.load_user_data(user_data.get('user_seq_no'), user_name)  # user_seq_no와 name 전달
+                    home_screen.load_user_data(user_seq_no)
                     self.manager.current = 'home'
                     return
-
-            print("No matching user found with given email and password")
             self.status_label.text = 'Invalid email or password.'
         except Exception as e:
-            print(f"Error logging in: {str(e)}")
             self.status_label.text = f'Error logging in: {str(e)}'
-
     def signup(self, instance):
-        self.manager.current = 'signup'
+        self.manager.current = 'auth'
+    def test_verification(self, instance):
+        self.manager.current = 'secondVerification'
