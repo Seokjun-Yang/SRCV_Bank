@@ -1,3 +1,4 @@
+import requests
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.behaviors import ButtonBehavior
@@ -10,9 +11,6 @@ from kivy.uix.popup import Popup
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from datetime import datetime
-
-import requests
-
 class ImageButton(ButtonBehavior, Image):
     pass
 
@@ -31,110 +29,59 @@ class TransferScreen(Screen):
         self.layout = FloatLayout()
 
         # 배경 이미지
-        self.bg_image = Image(source='images/background.png', allow_stretch=True, keep_ratio=False)
+        self.bg_image = Image(source='images/transfer_background.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg_image)
 
-        # "송금" 텍스트
-        self.sender_account_text = Label(text="송금", font_name=fontName1, font_size=20,
-                                         pos_hint={'x': 0.05, 'y': 0.9}, size_hint=(0.3, 0.05),
-                                         color=(0.1, 0.4, 0.8, 1))
-        self.layout.add_widget(self.sender_account_text)
-
-        # Back 버튼 추가
-        self.back_button = ImageButton(
-            source='images/back_button.png',
-            size_hint=(None, None), size=(30, 30),
-            pos_hint={'x': 0.04, 'y': 0.902}
-        )
+        # Back 버튼
+        self.back_button = ImageButton(source='images/back_button.png', allow_stretch=True, keep_ratio=False,
+                                       size_hint=(None, None), size=(25, 25), pos_hint={'x': 0.06, 'top': 0.94})
         self.back_button.bind(on_press=self.go_back_to_home)
         self.layout.add_widget(self.back_button)
+        # "홈" 텍스트
+        self.home_text = Label(text="홈", font_name=fontName1, font_size=20, pos_hint={'x': 0.153, 'top': 0.933},
+                               size_hint=(0.046, 0.018), color=(0.447, 0.749, 0.471, 1))
+        self.layout.add_widget(self.home_text)
+        # 송금안내 텍스트
+        self.information_text = Label(text="돈을 보내려면\n아래 항목을 입력해주세요.", font_name=fontName1, font_size=17,
+                                      pos_hint={'x': 0.093, 'top': 0.876}, size_hint=(0.446, 0.042), color=(0.227, 0.231, 0.224, 1))
+        self.layout.add_widget(self.information_text)
 
-        # 출금 계좌 배경 이미지 추가
-        self.account_bg_image = Image(source='images/transaction_background.png', size_hint=(0.9, 0.3),
-                                      pos_hint={'x': 0.05, 'y': 0.63})
-        self.layout.add_widget(self.account_bg_image)
-
-        # 아이콘
-        self.icon_image = Image(source='images/icon.png', size_hint=(0.13, 0.13), pos_hint={'x': 0.078, 'y': 0.765})
-        self.layout.add_widget(self.icon_image)
-
-        # 계좌번호 표시 레이블
-        self.sender_account_label = Label(
-            text="", font_name=fontName1, font_size=18, pos_hint={'x': 0.22, 'y': 0.83},
-            size_hint=(0.6, 0.05), color=(1, 1, 1, 1), halign='left')
-        self.sender_account_label.bind(size=self.sender_account_label.setter('text_size'))
-        self.layout.add_widget(self.sender_account_label)
-
-        # 통장 이름 표시 레이블
-        self.account_details_label = Label(
-            text="", font_name=fontName2, font_size=14, pos_hint={'x': 0.225, 'y': 0.8},
-            size_hint=(0.3, 0.05), color=(1, 1, 1, 1), halign='left')
-        self.account_details_label.bind(size=self.account_details_label.setter('text_size'))
-        self.layout.add_widget(self.account_details_label)
-
-        # 출금 가능 금액 표시 레이블
-        self.available_balance_label_text = Label(
-            text="출금 가능 금액", font_name=fontName2, font_size=14, pos_hint={'x': 0.09, 'y': 0.736},
-            size_hint=(0.3, 0.05), color=(1, 1, 1, 1), halign='left')
-        self.available_balance_label_text.bind(size=self.available_balance_label_text.setter('text_size'))
-        self.layout.add_widget(self.available_balance_label_text)
-
-        # 출금 가능 금액 숫자 표시
-        self.available_balance_label = Label(
-            text="", font_name=fontName1, font_size=20, pos_hint={'x': 0.515, 'y': 0.732},
-            size_hint=(0.4, 0.05), color=(1, 1, 1, 1), halign='right')
-        self.available_balance_label.bind(size=self.available_balance_label.setter('text_size'))
-        self.layout.add_widget(self.available_balance_label)
-
-        # 1일 송금 잔여한도 텍스트 레이블
-        self.daily_limit_label_text = Label(
-            text="1일 송금 잔여한도", font_name=fontName2, font_size=12, pos_hint={'x': 0.09, 'y': 0.704},
-            size_hint=(0.4, 0.05), color=(1, 1, 1, 1), halign='left')
-        self.daily_limit_label_text.bind(size=self.daily_limit_label_text.setter('text_size'))
-        self.layout.add_widget(self.daily_limit_label_text)
-
-        # 1일 송금 잔여한도 금액 레이블
-        self.daily_limit_label = Label(
-            text="5,000,000원", font_name=fontName1, font_size=14, pos_hint={'x': 0.51, 'y': 0.702},
-            size_hint=(0.4, 0.05), color=(1, 1, 1, 1), halign='right')
-        self.daily_limit_label.bind(size=self.daily_limit_label.setter('text_size'))
-        self.layout.add_widget(self.daily_limit_label)
-
-        # 배경 이미지 추가
-        self.receiver_account_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1),
-                                         pos_hint={'x': 0.08, 'y': 0.53})
-        self.layout.add_widget(self.receiver_account_bg)
-
-        # 계좌번호 버튼 생성
-        self.receiver_account_input = LeftAlignedButton(
-            text='계좌번호', font_name=fontName2, halign='left', valign='middle',
-            size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.53},
-            color=(1, 1, 1, 1), padding=(8, 0)
-        )
-
-        self.receiver_account_input.bind(size=lambda instance, value: setattr(instance, 'text_size', (instance.width, None)))
-        self.receiver_account_input.bind(on_press=self.show_account_selection_popup)
-        self.layout.add_widget(self.receiver_account_input)
+        # 계좌 선택 버튼
+        self.select_account_button = ImageButton(source='images/plus_icon.png', size_hint=(None, None), size=(50, 50),
+                                                 pos_hint={'x': 0.163, 'top': 0.721})
+        self.select_account_button.bind(on_press=self.show_account_selection_popup)
+        self.layout.add_widget(self.select_account_button)
+        # 계좌 정보 표시 레이블
+        self.account_info_label = Label(text="누구에게 송금할까요?", font_name=fontName1, font_size=18,
+                                        pos_hint={'x': 0.27, 'top': 0.721}, size_hint=(None, None), line_height=1.3,
+                                        size=(200, 50), color=(0, 0, 0, 1), halign='left', valign='middle')
+        self.account_info_label.bind(size=self.account_info_label.setter('text_size'))
+        self.layout.add_widget(self.account_info_label)
 
         # 송금 금액 입력 창
-        self.amount_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1),
-                               pos_hint={'x': 0.08, 'y': 0.41})
-        self.layout.add_widget(self.amount_bg)
-
-        self.amount_input = TextInput(hint_text='금액', font_name=fontName2, multiline=False, size_hint=(0.9, 0.1),
-            pos_hint={'x': 0.11, 'y': 0.385}, background_color=(0, 0, 0, 0), hint_text_color=(1, 1, 1, 1))
+        self.amount_input = TextInput(hint_text='0.0', font_name=fontName1, font_size=55, multiline=False, size_hint=(0.583, None), height=120,
+                                      pos_hint={'center_x': 0.5, 'center_y': 0.5}, background_color=(0, 0, 0, 0),
+                                      hint_text_color=(0.8, 0.8, 0.8, 1), foreground_color=(0.431, 0.431, 0.431, 1), halign='center')
+        self.amount_input.padding_y = [self.amount_input.height / 2 - self.amount_input.line_height / 2, 0]
         self.layout.add_widget(self.amount_input)
 
+        # 출금 가능 금액 표시 레이블
+        self.balance_layout_image = Image(source='images/balance_layout.png', size_hint=(0.676, 0.075),
+                                      pos_hint={'center_x': 0.5, 'top': 0.296})
+        self.layout.add_widget(self.balance_layout_image)
+        self.balance_icon_image = Image(source='images/balance_icon.png', size_hint=(None, None), size=(25, 25),
+                                        pos_hint={'x': 0.213, 'top': 0.275})
+        self.layout.add_widget(self.balance_icon_image)
+        self.balance_label = Label(text="", font_name=fontName1, font_size=18,
+                                   color=(0.354, 0.58, 0.369, 1), size_hint=(0.46, 0.05), halign='left',
+                                   pos_hint={'x': 0.316, 'top': 0.285})
+        self.layout.add_widget(self.balance_label)
+
         # 송금 버튼
-        self.transfer_button = ImageButton(source='images/transfer_button.png', size_hint=(0.9, 0.2),
-                                           pos_hint={'x': 0.05, 'y': 0.25})
+        self.transfer_button = ImageButton(source='images/transfer_button_2.png', size_hint=(0.84, 0.083),
+                                           pos_hint={'center_x': 0.5, 'top': 0.14})
         self.transfer_button.bind(on_press=self.transfer_money_button_pressed)
         self.layout.add_widget(self.transfer_button)
-
-        # 상태 메시지 표시 레이블
-        self.status_label = Label(text='송금 정보를 입력하세요', font_name=fontName1, font_size=15, size_hint=(0.83, 0.1),
-                                  color=(0.1, 0.4, 0.8, 1), pos_hint={'x': 0.1, 'y': 0.15})
-        self.layout.add_widget(self.status_label)
 
         self.add_widget(self.layout)
 
@@ -143,26 +90,29 @@ class TransferScreen(Screen):
         self.manager.current = 'home'
 
     def on_enter(self):
-        if self.sender_account and self.user_seq_no:
-            account_data = get_account_data(self.user_seq_no)
+        # 송금 화면에 들어올 때 입력값 초기화
+        self.amount_input.text = ""
+        self.account_info_label.text = "누구에게 송금할까요?"
+        self.selected_receiver_account = None
+        self.load_balance_info()  # 잔액 정보 로드
 
-            if account_data is None:
-                self.status_label.text = "송금 계좌 정보를 불러올 수 없습니다."
-                return
-
-            # 계좌 정보가 있을 때만 텍스트를 업데이트
-            self.sender_account_label.text = f"{account_data['account_num_masked']}"
-            self.account_details_label.text = f"SRV{account_data['fintech_use_num'][-4:]} 통장"
-            self.available_balance_label.text = f"{int(account_data['balance_amt']):,}원"
+    def load_balance_info(self):
+        if hasattr(self, 'user_seq_no'):
+            account_ref = db.reference(f'users/{self.user_seq_no}/account')
+            account_info = account_ref.get()
+            if account_info:
+                balance_amt = account_info.get('balance_amt', 0)
+                self.balance_label.text = f'송금 가능 금액: {balance_amt:,}'
+            else:
+                self.balance_label.text = "잔액 정보를 불러올 수 없습니다."
         else:
-            self.status_label.text = "송금할 계좌를 선택하세요."
+            self.balance_label.text = "유효한 계좌 정보가 없습니다."
 
     def show_account_selection_popup(self, instance):
         ref = db.reference('users')
         users_data = ref.get()
 
         if not users_data:
-            self.status_label.text = "계좌 정보를 불러올 수 없습니다."
             return
 
         all_accounts = {}
@@ -176,7 +126,6 @@ class TransferScreen(Screen):
                 }
 
         if not all_accounts:
-            self.status_label.text = "사용 가능한 계좌 정보가 없습니다."
             return
 
         # 팝업의 전체 레이아웃을 FloatLayout으로 설정
@@ -241,7 +190,7 @@ class TransferScreen(Screen):
             content=popup_layout,
             size_hint=(None, None),
             size=(350, 450),
-            background='images/transfer_background.png',
+            background='images/account_select_background.png',
             background_color=(1, 1, 1, 1)
         )
 
@@ -249,11 +198,13 @@ class TransferScreen(Screen):
         self.account_popup.open()
 
     def select_account(self, user_seq_no):
-        """계좌 선택 후 데이터를 처리하는 함수"""
+        """계좌 선택 시 계좌 정보를 표시하고 송금 대상 설정"""
         account_data = get_account_data(user_seq_no)
         if account_data:
-            self.receiver_account_input.text = account_data['account_num_masked']
             self.selected_receiver_account = user_seq_no
+            account_num_masked = account_data.get('account_num_masked', 'N/A')
+            receiver_name = db.reference(f'users/{user_seq_no}/user_info/name').get()
+            self.account_info_label.text = f"{account_num_masked}\n{receiver_name}"
             self.account_popup.dismiss()
         else:
             self.status_label.text = "계좌 정보를 불러올 수 없습니다."
@@ -263,15 +214,31 @@ class TransferScreen(Screen):
         amount = self.amount_input.text
 
         if not self.sender_account or not receiver_account or not amount:
-            self.status_label.text = '모든 필드를 입력하세요.'
             return
 
+        # 송금 기능 호출 및 거래 내역 기록
         result_message = transfer_money(self.user_seq_no, self.sender_account, receiver_account, amount)
-        self.status_label.text = result_message
+        print(result_message)
+
+        # 거래 내역 정보를 가져와서 완료 화면으로 전달
+        date = datetime.now().strftime('%Y-%m-%d')
+        am_pm = datetime.now().strftime('%p')
+        am_pm_korean = '오전' if am_pm == 'AM' else '오후'
+        time = f"{am_pm_korean} {datetime.now().strftime('%I:%M')}"
+        receiver_name = db.reference(f'users/{receiver_account}/user_info/name').get()
+
+        # 송금 완료 화면으로 전환
+        complete_screen = self.manager.get_screen('transfer_complete')
+        complete_screen.set_transfer_info(
+            date=date,
+            time=time,
+            receiver=receiver_name,
+            amount=int(amount)
+        )
+        complete_screen.set_user_seq_no(self.user_seq_no)  # user_seq_no 설정
+        self.manager.current = 'transfer_complete'
 
         self.update_home_balance_and_transactions()
-
-        self.manager.current = 'home'
 
     def update_home_balance_and_transactions(self):
         """홈 화면에 있는 계좌 잔액 및 거래 내역 정보를 업데이트하는 함수"""

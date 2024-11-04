@@ -6,9 +6,12 @@ from kivy.uix.image import Image
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.scrollview import ScrollView
 from PIL import Image as PILImage
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
+from kivy.config import Config
+
+Config.set('graphics', 'dpi', '320')  # DPI를 높게 설정하여 텍스트와 화면을 선명하게
 
 fontName1 = 'LINESeedKR-Bd.ttf'
 fontName2 = 'LINESeedKR-Rg.ttf'
@@ -85,10 +88,12 @@ class HomeScreen(Screen):
                                             size_hint=(0.203, 0.018), pos_hint={'x': 0.07, 'top': 0.485})
         self.layout.add_widget(self.last_transaction_label)
 
-        # 거래 내역 레이아웃 추가 (최근 내역 라벨 바로 아래에 위치시킴)
-        self.transaction_layout = BoxLayout(orientation='vertical', size_hint=(0.9, None), height=179, padding=[10, 5],
-                                            spacing=5, pos_hint={'x': 0.05, 'top': 0.37})
-        self.layout.add_widget(self.transaction_layout)
+        # ScrollView를 사용하여 거래 내역 스크롤 가능하게 설정
+        self.scroll_view = ScrollView(size_hint=(0.9, 0.3), pos_hint={'center_x': 0.5, 'top': 0.43})
+        self.transaction_layout = BoxLayout(orientation='vertical', size_hint_y=None, padding=[10, 5], spacing=5)
+        self.transaction_layout.bind(minimum_height=self.transaction_layout.setter('height'))
+        self.scroll_view.add_widget(self.transaction_layout)
+        self.layout.add_widget(self.scroll_view)
 
         # 거래 내역 불러오기
         self.load_and_display_transactions()
@@ -105,7 +110,6 @@ class HomeScreen(Screen):
         self.info_button = ImageButton(source='images/info_icon.png', allow_stretch=True, keep_ratio=False,
                                            size_hint=(0.073, 0.036), pos_hint={'x': 0.753, 'top': 0.081})
         self.layout.add_widget(self.info_button)
-
 
     def load_user_data(self, user_seq_no):
         self.user_seq_no = user_seq_no
@@ -136,11 +140,17 @@ class HomeScreen(Screen):
             self.load_and_display_transactions()
 
     def refresh_balance(self):
-        """송금 후 잔액을 업데이트하는 함수"""
-        if self.sender_account:
-            account_data = db.reference(f'users/{self.user_name}/account').get()
+        """송금 후 홈 화면의 잔액을 업데이트하는 함수"""
+        if self.user_seq_no:
+            account_data = db.reference(f'users/{self.user_seq_no}/account').get()
             if account_data:
-                self.balance_label.text = f'{account_data["balance_amt"]}원'
+                balance_amt = account_data.get('balance_amt', 0)
+                self.balance_label.text = f'{balance_amt:,}원'
+                self.balance_shadow_label.text = f'{balance_amt:,}원'
+            else:
+                print("계좌 데이터를 불러올 수 없습니다.")
+        else:
+            print("유효한 사용자 번호가 없습니다.")
 
     def on_transfer_button_pressed(self, instance):
         # 송금 버튼을 누르면 송금 화면으로 넘어가며, 선택된 계좌를 전달
@@ -148,7 +158,6 @@ class HomeScreen(Screen):
             transfer_screen = self.manager.get_screen('transfer')
             transfer_screen.sender_account = self.sender_account
             transfer_screen.user_seq_no = self.user_seq_no
-            transfer_screen.sender_account_label.text = f"송금할 계좌: {self.sender_account}"
             self.manager.current = 'transfer'
         else:
             print("송금할 계좌가 없습니다.")  # 오류 메시지 출력
@@ -171,6 +180,7 @@ class HomeScreen(Screen):
                 transactions_data[0].get('description') == "no transactions" and
                 transactions_data[0].get('type') == "정보 없음"
         ):
+
             empty_layout = FloatLayout(size_hint=(None, None), size=(200, 350))
             empty_layout.pos_hint = {'center_x': 0.5, 'top': 0.2}  # 위치 조정
 
@@ -214,18 +224,11 @@ class HomeScreen(Screen):
             # 거래 내역을 포함할 레이아웃 생성
             transaction_layout = FloatLayout(size_hint_y=None, height=80)
 
-            if i == 0:  # 역순이므로 첫 번째 항목이 가장 최근 거래
-                with transaction_layout.canvas.before:
-                    last_transaction_image = Image(source='images/last_transaction.png', allow_stretch=True,
-                                                   keep_ratio=False, size_hint=(None, None), size=(340, 90),
-                                                   pos_hint={'center_x': 0.5, 'y': 0.08})
-                    transaction_layout.add_widget(last_transaction_image)
-
             # 설명 레이블 추가
             description_label = Label(
                 text=str(description), font_name=fontName1, font_size=19, color=(0, 0, 0, 1),
                 size_hint=(None, None), size=(400, 30), pos_hint={'x': 0.06, 'y': 0.62},
-                halign='left', valign='middle', text_size=(400, None)
+                halign='left', valign='middle', text_size=(400, None), mipmap=True
             )
             transaction_layout.add_widget(description_label)
 
@@ -233,7 +236,7 @@ class HomeScreen(Screen):
             datetime_label = Label(
                 text=str(date), font_name=fontName1, font_size=13, color=(0.5, 0.5, 0.5, 1),
                 size_hint=(None, None), size=(100, 70), pos_hint={'x': 0.06, 'y': 0.02},
-                halign='left', valign='middle', text_size=(100, 70)
+                halign='left', valign='middle', text_size=(100, 70), mipmap=True
             )
             transaction_layout.add_widget(datetime_label)
 
@@ -243,7 +246,7 @@ class HomeScreen(Screen):
                 font_name=fontName1, font_size=19,
                 color=(0.68, 0.29, 0.29, 1) if transaction_type == '출금' else (0.29, 0.36, 0.29, 1),
                 size_hint=(None, None), size=(100, 70), pos_hint={'x': 0.62, 'y': 0.22},
-                halign='right', valign='middle', text_size=(100, 70)
+                halign='right', valign='middle', text_size=(100, 70), mipmap=True
             )
             transaction_layout.add_widget(amount_label)
 

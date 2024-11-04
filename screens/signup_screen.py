@@ -31,7 +31,7 @@ class SignupScreen(Screen):
         # 이름 입력 창과 배경 이미지
         self.name_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.65})
         self.layout.add_widget(self.name_bg)
-        self.name_input = TextInput(hint_text='Name', multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.62},
+        self.name_input = TextInput(hint_text='Name', font_name=fontName, font_size=14, multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.62},
                                      background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
         self.layout.add_widget(self.name_input)
 
@@ -67,7 +67,7 @@ class SignupScreen(Screen):
         self.layout.add_widget(self.signup_verification_button)
 
         # 인증 상태를 출력할 레이블 추가
-        self.status_label = Label(text='', font_name='Hancom Gothic Bold.ttf', font_size=14, size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.1}, color=(1, 0, 0, 1))
+        self.status_label = Label(text='', font_name=fontName, font_size=14, size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.1}, color=(1, 0, 0, 1))
         self.layout.add_widget(self.status_label)
 
         self.add_widget(self.layout)
@@ -83,28 +83,35 @@ class SignupScreen(Screen):
         except Exception as e:
             print(f"리스너 시작 중 오류 발생: {str(e)}")
             self.status_label.text = f"리스너 오류: {str(e)}"
+
     def user_seq_no_listener(self, event):
         try:
             print("Firebase 리스너가 호출되었습니다.")
             print(f"리스너 데이터: {event.data}")
 
-            # 변경된 user_seq_no가 있는지 확인하고 가져옴
-            changed_user_seq_no = next((seq_no for seq_no in event.data.keys() if seq_no.isdigit()), None)
+            # 가장 최근에 변경된 user_seq_no 탐색
+            if event.data and isinstance(event.data, dict):
+                # event.data의 키를 리스트로 변환하고 정렬하여 가장 마지막 키를 가져옴
+                changed_user_seq_no = sorted(event.data.keys(), key=lambda x: int(x))[-1]
 
-            if changed_user_seq_no and changed_user_seq_no != self.user_seq_no:
-                print(f"변경된 user_seq_no: {changed_user_seq_no}")
-                self.user_seq_no = changed_user_seq_no  # 변경된 user_seq_no 업데이트
-                self.user_data = db.reference(f'users/{self.user_seq_no}').get()
-                print(f"변경된 user_seq_no에 해당하는 데이터: {self.user_data}")
-                self.status_label.text = "인증 성공! 변경된 user_seq_no를 확인했습니다."
+                if changed_user_seq_no and changed_user_seq_no != self.user_seq_no:
+                    print(f"변경된 user_seq_no: {changed_user_seq_no}")
+                    self.user_seq_no = changed_user_seq_no  # 변경된 user_seq_no 업데이트
+                    self.user_data = db.reference(f'users/{self.user_seq_no}').get()
+                    print(f"변경된 user_seq_no에 해당하는 데이터: {self.user_data}")
+                    self.status_label.text = "인증 성공! 변경된 user_seq_no를 확인했습니다."
+                else:
+                    print("변경된 user_seq_no를 찾을 수 없습니다.")
+                    self.status_label.text = "유효한 사용자 정보가 없습니다."
 
             else:
-                print("변경된 user_seq_no를 찾을 수 없습니다.")
-                self.status_label.text = "유효한 사용자 정보가 없습니다."
+                print("리스너에서 유효한 데이터가 없습니다.")
+                self.status_label.text = "리스너에서 유효한 데이터가 없습니다."
 
         except Exception as e:
             self.status_label.text = f"listener 오류 발생: {str(e)}"
             print(f"listener 오류 발생: {str(e)}")
+
     def signup(self, instance):
         if not self.user_seq_no:
             self.status_label.text = '인증을 먼저 완료해주세요.'
@@ -130,7 +137,6 @@ class SignupScreen(Screen):
                 }),
                 headers={'Content-Type': 'application/json'}
             )
-
             data = response.json()
 
             if 'idToken' in data:
@@ -144,7 +150,6 @@ class SignupScreen(Screen):
                         'phone': phone
                     }
                 })
-
                 self.status_label.text = f'회원가입 완료: {email}'
                 self.manager.current = 'login'
             else:

@@ -12,6 +12,7 @@ from screens.auth_screen import AuthScreen
 from screens.auth_complete_screen import AuthCompleteScreen
 from screens.signup_screen import SignupScreen
 from screens.transfer_screen import TransferScreen
+from screens.transfer_complete_screen import TransferCompleteScreen
 from screens.signup_verification_screen import SignupVerification
 from screens.second_verification_screen import SecondVerification
 from kivy.uix.camera import Camera
@@ -53,6 +54,7 @@ class FirebaseApp(App):
         self.screen_manager.add_widget(SignupScreen(name='signup'))
         self.screen_manager.add_widget(HomeScreen(name='home'))
         self.screen_manager.add_widget(TransferScreen(name='transfer'))
+        self.screen_manager.add_widget(TransferCompleteScreen(name='transfer_complete'))
         self.screen_manager.add_widget(SignupVerification(name='signupVerification'))
         self.screen_manager.add_widget(SecondVerification(name='secondVerification'))
 
