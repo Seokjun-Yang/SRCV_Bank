@@ -1,16 +1,23 @@
 import json
+import os
+import threading
+import time
+
 import requests
 from firebase_admin import db
+from kivy.app import App
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.image import Image
 from kivy.uix.screenmanager import Screen
+from plyer import storagepath
 from screens.image_button import ImageButton
 from kivy.uix.button import Button
 from PIL import Image as PILImage
 
-# 원본 이미지를 고해상도로 로드한 후 리샘플링하여 저장
+from SRCV_Bank.utils.metadata_manager import MetadataManager
+
 img = PILImage.open("images/name_input.png")
 img = img.resize((555, 150), PILImage.LANCZOS)  # 크기 줄이기 및 고화질 리샘플링
 img.save("images/name_input_re.png")  # 리샘플링 후 저장
@@ -63,7 +70,8 @@ class SignupScreen(Screen):
         self.layout.add_widget(self.login_save_label)
 
         # 회원가입 버튼
-        self.signup_button = ImageButton(source='images/signup_button2.png', size_hint=(0.533, 0.093), pos_hint={'center_x': 0.5, 'top': 0.248})
+        self.signup_button = ImageButton(source='images/signup_button2.png', size_hint=(0.533, 0.093),
+                                         pos_hint={'center_x': 0.5, 'top': 0.248})
         self.signup_button.bind(on_press=self.signup)
         self.layout.add_widget(self.signup_button)
 
@@ -72,10 +80,17 @@ class SignupScreen(Screen):
                                   valign='middle')
         self.layout.add_widget(self.signup_label)
         self.login_button = Button(text='로그인', font_name=fontName1, font_size=15, size_hint=(0.4, 0.022),
-                                    pos_hint={'x': 0.49, 'top': 0.122}, color=(0.4471, 0.749, 0.4706, 1),
-                                    background_color=(0, 0, 0, 0))
+                                   pos_hint={'x': 0.49, 'top': 0.122}, color=(0.4471, 0.749, 0.4706, 1),
+                                   background_color=(0, 0, 0, 0))
         self.login_button.bind(on_press=self.login)
         self.layout.add_widget(self.login_button)
+
+        #self.add_widget(self.layout)
+
+        #  얼굴인증 촬영 테스트 버튼
+        """self.signup_verification_button = ImageButton(source='images/profile_picture.png', size_hint=(0.9, 0.1), pos_hint={'x': 0.07, 'y': 0.1})
+        self.signup_verification_button.bind(on_press=self.verification)
+        self.layout.add_widget(self.signup_verification_button)"""
 
         self.add_widget(self.layout)
 
@@ -84,6 +99,7 @@ class SignupScreen(Screen):
             print("user_seq_no가 없습니다. 인증을 완료하고 오세요.")
         else:
             print(f"전달받은 user_seq_no: {self.user_seq_no}")
+
 
     def signup(self, instance):
         if not self.user_seq_no:
@@ -118,10 +134,13 @@ class SignupScreen(Screen):
                     'user_info': {
                         'name': name,
                         'email': email,
-                        'password' : password
+                        'password': password
                     }
                 })
                 print(f'회원가입 완료: {email}')
+                #tts와 파일명 변경
+                # self.rename_image() #저장된 이미지 이름을 user_seq_no로 변경
+                # self.tts() #동작설명
                 self.manager.current = 'login'
             else:
                 error_message = data.get("error", {}).get("message", "Unknown error")
@@ -132,3 +151,25 @@ class SignupScreen(Screen):
 
     def login(self, instance):
         self.manager.current = 'login'
+
+    def tts(self):
+        app = App.get_running_app()
+        threading.Thread(target=app.speak, args=("회원가입이 완료되었습니다.",)).start()
+        time.sleep(1)
+    def rename_image(self):
+        # 이미지 이름
+        self.image_name = 'signup_temp.jpg'
+        # 경로
+        self.home_dir = storagepath.get_home_dir()
+        self.storage_path = os.path.join(self.home_dir, "bank")
+        self.image_path = os.path.join(self.storage_path, self.image_name)
+
+        self.new_image_path = os.path.join(self.storage_path, f'{self.user_seq_no}.jpg')
+        os.rename(src=self.image_path, dst=self.new_image_path)# user_seq_no.jpg로 이름 변경
+
+        manager = MetadataManager(self.storage_path)
+        manager.finalize_metadata(self.user_seq_no)  #메타데이터 추가
+
+    def change_screen(self, screen):
+        self.manager.current = screen
+

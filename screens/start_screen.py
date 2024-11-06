@@ -1,3 +1,5 @@
+from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import ButtonBehavior
 from kivy.uix.image import Image
@@ -14,6 +16,7 @@ class StartScreen(Screen):
         super(StartScreen, self).__init__(**kwargs)
 
         self.layout = FloatLayout()
+        self.event = None
 
         # 배경 이미지
         self.bg_image = Image(source='images/start_background.png', allow_stretch=True, keep_ratio=False)
@@ -54,7 +57,45 @@ class StartScreen(Screen):
         self.add_widget(self.layout)
 
     def go_to_login(self, instance):
-        self.manager.current = 'login'
+        App.get_running_app().stop_speaking()
+        self.on_speaking('로그인 화면으로 이동합니다.', priority=0)
+        '''self.event = Clock.schedule_once(
+            lambda dt: App.get_running_app().speak('로그인 화면으로 이동합니다.'), 0.5)'''
+        Clock.schedule_once(lambda dt:self.change_screen('login'), 2)
+
 
     def go_to_signup(self, instance):
-        self.manager.current = 'phone_auth'
+        App.get_running_app().stop_speaking()
+        self.on_speaking('회원가입 화면으로 이동합니다.', priority=0)
+        '''self.event = Clock.schedule_once(
+            lambda dt: App.get_running_app().speak('회원가입 화면으로 이동합니다.'), 0.5)'''
+        Clock.schedule_once(lambda dt:self.change_screen('phone_auth'), 2)
+
+
+    def on_pre_enter(self, *args):
+        app = App.get_running_app()
+        app.stop_speaking()
+        tts = f'{self.text1.text}, {self.text2.text}. 로그인 화면이나 회원가입 화면으로 이동해주세요.'
+        #self.event = Clock.schedule_once(lambda dt: app.speak(tts), 1)
+        #tts = '계정이 있다면 로그인을, 없다면 회원가입 버튼을 눌러주세요.'
+        self.on_speaking(tts, priority=0)
+
+    def cancel_speak(self):
+        # say_hi 스케줄링을 해제하는 함수
+        app = App.get_running_app()
+        app.stop_speaking()
+        if self.event:
+            Clock.unschedule(self.event)
+            self.event = None
+
+    def on_speaking(self, message, priority = 1):
+        # 현재 메시지가 출력 중이면 취소
+        App.get_running_app().stop_speaking()
+        # 회원가입 버튼 클릭 시 메시지 출력 (한 번만 출력)
+        self.event = Clock.schedule_once(
+            lambda dt: App.get_running_app().speak(message, priority),
+            1
+        )
+
+    def change_screen(self, screen):
+        self.manager.current = screen

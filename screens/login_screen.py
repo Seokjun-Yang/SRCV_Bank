@@ -1,3 +1,7 @@
+import time
+
+from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
@@ -6,6 +10,7 @@ from kivy.uix.screenmanager import Screen
 from screens.image_button import ImageButton
 from kivy.uix.button import Button
 from firebase_admin import db
+import requests
 
 fontName1 = 'LINESeedKR-Bd.ttf'
 fontName2 = 'LINESeedKR-Rg.ttf'
@@ -60,15 +65,17 @@ class LoginScreen(Screen):
         self.or_label = Label(text='또는', font_name=fontName1, font_size=15, size_hint=(0.063, 0.022),
                                   pos_hint={'center_x': 0.5, 'top': 0.13}, color=(0.3922, 0.3922, 0.3922, 1), halign='left', valign='middle')
         self.layout.add_widget(self.or_label)
-        self.camera_auth_label = Label(text='얼굴인증 로그인', font_name=fontName1, font_size=17, size_hint=(0.327, 0.025),
-                                  pos_hint={'center_x': 0.5, 'top': 0.075}, color=(0.9608, 0.7608, 0.4196, 1), halign='left', valign='middle')
-        self.layout.add_widget(self.camera_auth_label)
-
         # 얼굴인증 촬영 버튼
-        self.second_verification_button = ImageButton(source='images/camera_button.png', size_hint=(0.117, 0.058),
+        self.camera_auth_Button = Button(text='얼굴인증 로그인', font_name=fontName1, font_size=17, size_hint=(0.327, 0.025),
+                                  pos_hint={'center_x': 0.5, 'top': 0.075}, color=(0.9608, 0.7608, 0.4196, 1), halign='left', valign='middle')
+        self.camera_auth_Button.bind(on_press=self.face_login)
+        self.layout.add_widget(self.camera_auth_Button)
+
+
+        '''self.second_verification_button = ImageButton(source='images/camera_button.png', size_hint=(0.117, 0.058),
                                                       pos_hint={'x': 0.817, 'top': 0.075})
         self.second_verification_button.bind(on_press=self.test_verification)
-        self.layout.add_widget(self.second_verification_button)
+        self.layout.add_widget(self.second_verification_button)'''
 
         self.add_widget(self.layout)
 
@@ -94,11 +101,80 @@ class LoginScreen(Screen):
                     # 홈 화면으로 사용자 정보 전달
                     home_screen = self.manager.get_screen('home')
                     home_screen.load_user_data(user_seq_no)
+                    self.event = self.on_speaking("로그인 버튼을 눌렀습니다.")  ###
+                    # self.event = None
                     self.manager.current = 'home'
+
                     return
         except Exception as e:
             pass
+
     def signup(self, instance):
+        App.get_running_app().stop_speaking()
+        self.event = self.on_speaking("회원가입 버튼을 눌렀습니다. 번호 인증 화면으로 이동합니다.")###
         self.manager.current = 'phone_auth'
-    def test_verification(self, instance):
-        self.manager.current = 'secondVerification'
+
+    def face_login(self, instance):
+        App.get_running_app().stop_speaking()
+        self.event = self.on_speaking("얼굴인증 버튼을 눌렀습니다. 얼굴인증 화면으로 이동합니다.", priority=0)###
+        Clock.schedule_once(lambda dt:self.change_screen('loginVerification'), 2)
+        #self.manager.current = 'loginVerification' #transferVerification loginVerification
+
+    def on_pre_enter(self, *args):#
+        #App.get_running_app().stop_speaking()
+        #self.event = Clock.schedule_once(lambda dt: App.get_running_app().speak("로그인 화면입니다. 아이디와 비밀번호를 입력해주세요. 회원가입이나 얼굴인증으로 로그인 하시려면 아래의 글자를 눌러주세요."), 0.5)
+        #self.event = Clock.schedule_interval(lambda dt: App.get_running_app().speak("로그인 화면입니다. 아이디와 비밀번호를 입력해주세요. 회원가입이나 얼굴인증으로 로그인 하시려면 아래의 글자를 눌러주세요."), 0.5)
+        tts = "로그인 화면입니다. 아이디와 비밀번호를 입력해주세요. 회원가입이나 얼굴인증으로 로그인 하시려면 아래의 글자를 눌러주세요."
+        self.on_speaking(tts, priority=0)
+        pass
+
+    def on_leave(self, *args):
+        self.cancel_speak()
+        pass
+
+    def cancel_speak(self):
+        # say_hi 스케줄링을 해제하는 함수
+        app = App.get_running_app()
+        app.stop_speaking()
+        if self.event:
+            Clock.unschedule(self.event)
+            self.event = None
+
+    def on_speaking(self, message, priority = 1):
+        # 현재 메시지가 출력 중이면 취소
+        if self.event:
+            self.cancel_speal()
+
+        # 회원가입 버튼 클릭 시 메시지 출력 (한 번만 출력)
+        self.event = Clock.schedule_once(
+            lambda dt: App.get_running_app().speak(message, priority),
+            0.5
+        )
+
+    def on_pre_enter(self, *args):
+        app = App.get_running_app()
+        app.stop_speaking()
+
+        #self.event = Clock.schedule_once(lambda dt: app.speak(tts), 1)
+        tts = '계정이 있다면 로그인을, 없다면 회원가입 버튼을 눌러주세요.'
+        self.on_speaking(tts)
+
+    def cancel_speak(self):
+        # say_hi 스케줄링을 해제하는 함수
+        app = App.get_running_app()
+        app.stop_speaking()
+        if self.event:
+            Clock.unschedule(self.event)
+            self.event = None
+
+    def on_speaking(self, message):
+        # 현재 메시지가 출력 중이면 취소
+        App.get_running_app().stop_speaking()
+        # 회원가입 버튼 클릭 시 메시지 출력 (한 번만 출력)
+        self.event = Clock.schedule_once(
+            lambda dt: App.get_running_app().speak(message),
+            1
+        )
+
+    def change_screen(self, screen):
+        self.manager.current = screen

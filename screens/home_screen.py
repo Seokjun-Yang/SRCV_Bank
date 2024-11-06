@@ -158,7 +158,7 @@ class HomeScreen(Screen):
             transfer_screen = self.manager.get_screen('transfer')
             transfer_screen.sender_account = self.sender_account
             transfer_screen.user_seq_no = self.user_seq_no
-            self.manager.current = 'transfer'
+            self.manager.current = 'transferVerification' #'transfer'
         else:
             print("송금할 계좌가 없습니다.")  # 오류 메시지 출력
 
