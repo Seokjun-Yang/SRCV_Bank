@@ -8,122 +8,94 @@ from kivy.uix.image import Image
 from kivy.uix.screenmanager import Screen
 from screens.image_button import ImageButton
 from kivy.uix.button import Button
+from PIL import Image as PILImage
 
-fontName = 'LINESeedKR-Bd.ttf'
+# 원본 이미지를 고해상도로 로드한 후 리샘플링하여 저장
+img = PILImage.open("images/name_input.png")
+img = img.resize((555, 150), PILImage.LANCZOS)  # 크기 줄이기 및 고화질 리샘플링
+img.save("images/name_input_re.png")  # 리샘플링 후 저장
+
+
+fontName1 = 'LINESeedKR-Bd.ttf'
+fontName2 = 'LINESeedKR-Rg.ttf'
 
 class SignupScreen(Screen):
     def __init__(self, **kwargs):
         super(SignupScreen, self).__init__(**kwargs)
-        self.api_key = "AIzaSyDU67MIYsLtwbbpF_rnf0NcmPD_HDeGN8I"  # Firebase 프로젝트 설정에서 API 키를 확인할 수 있습니다
-
+        self.api_key = "AIzaSyDU67MIYsLtwbbpF_rnf0NcmPD_HDeGN8I"
         self.layout = FloatLayout()
         self.user_seq_no = ""
         self.user_data = {}
 
         # 배경 이미지 추가
-        self.bg_image = Image(source='images/background.png', allow_stretch=True, keep_ratio=False)
+        self.bg_image = Image(source='images/signup_background.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg_image)
-        self.logo_bg = Image(source='images/logo_image.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.1, 'y': 0.85})
-        self.layout.add_widget(self.logo_bg)
-        self.login_bg = Image(source='images/signup_image.png', size_hint=(0.6, 0.1), pos_hint={'x': 0.2, 'y': 0.75})
-        self.layout.add_widget(self.login_bg)
 
         # 이름 입력 창과 배경 이미지
-        self.name_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.65})
+        self.name_bg = Image(source='images/name_input_re.png', size_hint=(0.9, 0.12),
+                             pos_hint={'center_x': 0.5, 'top': 0.643})
         self.layout.add_widget(self.name_bg)
-        self.name_input = TextInput(hint_text='Name', font_name=fontName, font_size=14, multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.62},
-                                     background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
+        self.name_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, multiline=False,
+                                    size_hint=(0.9, 0.05), pos_hint={'x': 0.173, 'top': 0.6},
+                                    background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
         self.layout.add_widget(self.name_input)
 
-        # 휴대폰번호 입력 창과 배경 이미지
-        self.phone_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.56})
-        self.layout.add_widget(self.phone_bg)
-        self.phone_input = TextInput(hint_text='Phone Number', multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.533},
-                                     background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
-        self.layout.add_widget(self.phone_input)
-
         # 이메일 입력 창과 배경 이미지
-        self.email_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.47})
+        self.email_bg = Image(source='images/email_input.png', size_hint=(0.9, 0.12),
+                              pos_hint={'center_x': 0.5, 'top': 0.533})
         self.layout.add_widget(self.email_bg)
-        self.email_input = TextInput(hint_text='Email', multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.443},
-                                     background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
+        self.email_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, multiline=False,
+                                     size_hint=(0.9, 0.05), pos_hint={'x': 0.173, 'top': 0.477},
+                                     background_color=(0, 0, 0, 0))
         self.layout.add_widget(self.email_input)
 
         # 비밀번호 입력 창과 배경 이미지
-        self.password_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.38})
+        self.password_bg = Image(source='images/password_input.png', size_hint=(0.9, 0.12),
+                                 pos_hint={'center_x': 0.5, 'top': 0.423})
         self.layout.add_widget(self.password_bg)
-        self.password_input = TextInput(hint_text='Password', password=True, multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.353},
-                                        background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
+        self.password_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, password=True,
+                                        multiline=False, size_hint=(0.9, 0.05),
+                                        pos_hint={'x': 0.173, 'top': 0.367}, background_color=(0, 0, 0, 0))
         self.layout.add_widget(self.password_input)
 
+        self.login_save_label = Label(text='약관에 동의합니다.', font_name=fontName2, font_size=13, size_hint=(0.27, 0.012),
+                                      pos_hint={'x': 0.173, 'top': 0.298}, color=(0.3922, 0.3922, 0.3922, 1))
+        self.layout.add_widget(self.login_save_label)
+
         # 회원가입 버튼
-        self.signup_button = ImageButton(source='images/signup_button.png', size_hint=(0.9, 0.1), pos_hint={'x': 0.05, 'y': 0.2})
+        self.signup_button = ImageButton(source='images/signup_button2.png', size_hint=(0.533, 0.093), pos_hint={'center_x': 0.5, 'top': 0.248})
         self.signup_button.bind(on_press=self.signup)
         self.layout.add_widget(self.signup_button)
 
-        #  얼굴인증 촬영 테스트 버튼
-        self.signup_verification_button = ImageButton(source='images/profile_picture.png', size_hint=(0.9, 0.1), pos_hint={'x': 0.07, 'y': 0.1})
-        self.signup_verification_button.bind(on_press=self.verification)
-        self.layout.add_widget(self.signup_verification_button)
-
-        # 인증 상태를 출력할 레이블 추가
-        self.status_label = Label(text='', font_name=fontName, font_size=14, size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.1}, color=(1, 0, 0, 1))
-        self.layout.add_widget(self.status_label)
+        self.signup_label = Label(text='이미 계정이 있으신가요?', font_name=fontName1, font_size=15, size_hint=(0.2, 0.022),
+                                  pos_hint={'x': 0.33, 'top': 0.122}, color=(0.4039, 0.4039, 0.4039, 1), halign='left',
+                                  valign='middle')
+        self.layout.add_widget(self.signup_label)
+        self.login_button = Button(text='로그인', font_name=fontName1, font_size=15, size_hint=(0.4, 0.022),
+                                    pos_hint={'x': 0.49, 'top': 0.122}, color=(0.4471, 0.749, 0.4706, 1),
+                                    background_color=(0, 0, 0, 0))
+        self.login_button.bind(on_press=self.login)
+        self.layout.add_widget(self.login_button)
 
         self.add_widget(self.layout)
-    def verification(self, instance):
-        self.manager.current = 'signupVerification'
-    def on_enter(self):
-        # 회원가입 화면에 진입할 때만 리스너 시작
-        self.start_listener()
-    def start_listener(self):
-        try:
-            db.reference('users').listen(self.user_seq_no_listener)
-            print("Firebase 리스너가 시작되었습니다.")
-        except Exception as e:
-            print(f"리스너 시작 중 오류 발생: {str(e)}")
-            self.status_label.text = f"리스너 오류: {str(e)}"
 
-    def user_seq_no_listener(self, event):
-        try:
-            print("Firebase 리스너가 호출되었습니다.")
-            print(f"리스너 데이터: {event.data}")
-
-            # 가장 최근에 변경된 user_seq_no 탐색
-            if event.data and isinstance(event.data, dict):
-                # event.data의 키를 리스트로 변환하고 정렬하여 가장 마지막 키를 가져옴
-                changed_user_seq_no = sorted(event.data.keys(), key=lambda x: int(x))[-1]
-
-                if changed_user_seq_no and changed_user_seq_no != self.user_seq_no:
-                    print(f"변경된 user_seq_no: {changed_user_seq_no}")
-                    self.user_seq_no = changed_user_seq_no  # 변경된 user_seq_no 업데이트
-                    self.user_data = db.reference(f'users/{self.user_seq_no}').get()
-                    print(f"변경된 user_seq_no에 해당하는 데이터: {self.user_data}")
-                    self.status_label.text = "인증 성공! 변경된 user_seq_no를 확인했습니다."
-                else:
-                    print("변경된 user_seq_no를 찾을 수 없습니다.")
-                    self.status_label.text = "유효한 사용자 정보가 없습니다."
-
-            else:
-                print("리스너에서 유효한 데이터가 없습니다.")
-                self.status_label.text = "리스너에서 유효한 데이터가 없습니다."
-
-        except Exception as e:
-            self.status_label.text = f"listener 오류 발생: {str(e)}"
-            print(f"listener 오류 발생: {str(e)}")
+    def on_pre_enter(self):
+        if not self.user_seq_no:
+            print("user_seq_no가 없습니다. 인증을 완료하고 오세요.")
+        else:
+            print(f"전달받은 user_seq_no: {self.user_seq_no}")
 
     def signup(self, instance):
         if not self.user_seq_no:
-            self.status_label.text = '인증을 먼저 완료해주세요.'
+            print('인증을 먼저 완료해주세요.')
             return
 
         name = self.name_input.text
-        phone = self.phone_input.text
         email = self.email_input.text
         password = self.password_input.text
 
-        if not all([name, phone, email, password]):
-            self.status_label.text = '모든 입력 필드를 채워주세요.'
+        if not all([name, email, password]):
+            print('모든 입력 필드를 채워주세요.')
             return
 
         try:
@@ -146,15 +118,17 @@ class SignupScreen(Screen):
                     'user_info': {
                         'name': name,
                         'email': email,
-                        'password' : password,
-                        'phone': phone
+                        'password' : password
                     }
                 })
-                self.status_label.text = f'회원가입 완료: {email}'
+                print(f'회원가입 완료: {email}')
                 self.manager.current = 'login'
             else:
                 error_message = data.get("error", {}).get("message", "Unknown error")
-                self.status_label.text = f'Signup error: {error_message}'
+                print(f'Signup error: {error_message}')
 
         except Exception as e:
-            self.status_label.text = f'Error signing up: {str(e)}'
+            print(f'Error signing up: {str(e)}')
+
+    def login(self, instance):
+        self.manager.current = 'login'

@@ -6,10 +6,11 @@ from kivy.uix.screenmanager import ScreenManager
 from kivy.core.window import Window  # 모바일 화면 크기 설정 (테스트용) 실제 앱 빌드에서는 주석처리해야 한다.
 import firebase_admin
 from firebase_admin import credentials, initialize_app, db  # db 객체 가져오기
+from screens.start_screen import StartScreen
 from screens.login_screen import LoginScreen
 from screens.home_screen import HomeScreen
-from screens.auth_screen import AuthScreen
-from screens.auth_complete_screen import AuthCompleteScreen
+from screens.phone_auth_screen import PhoneAuthScreen
+from screens.face_auth_screen import FaceAuthScreen
 from screens.signup_screen import SignupScreen
 from screens.transfer_screen import TransferScreen
 from screens.transfer_complete_screen import TransferCompleteScreen
@@ -48,9 +49,10 @@ class FirebaseApp(App):
 
         # ScreenManager 설정
         self.screen_manager = ScreenManager()
+        self.screen_manager.add_widget(StartScreen(name='start'))
         self.screen_manager.add_widget(LoginScreen(name='login'))
-        self.screen_manager.add_widget(AuthScreen(name='auth'))
-        self.screen_manager.add_widget(AuthCompleteScreen(name='auth_complete'))
+        self.screen_manager.add_widget(PhoneAuthScreen(name='phone_auth'))
+        self.screen_manager.add_widget(FaceAuthScreen(name='face_auth'))
         self.screen_manager.add_widget(SignupScreen(name='signup'))
         self.screen_manager.add_widget(HomeScreen(name='home'))
         self.screen_manager.add_widget(TransferScreen(name='transfer'))

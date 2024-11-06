@@ -6,9 +6,9 @@ from kivy.uix.screenmanager import Screen
 from screens.image_button import ImageButton
 from kivy.uix.button import Button
 from firebase_admin import db
-import requests
 
-fontName = 'LINESeedKR-Bd.ttf'
+fontName1 = 'LINESeedKR-Bd.ttf'
+fontName2 = 'LINESeedKR-Rg.ttf'
 
 class LoginScreen(Screen):
     def __init__(self, **kwargs):
@@ -19,51 +19,54 @@ class LoginScreen(Screen):
         self.layout = FloatLayout()
 
         # 배경 이미지 추가
-        self.bg_image = Image(source='images/background.png', allow_stretch=True, keep_ratio=False)
+        self.bg_image = Image(source='images/login_background.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg_image)
-        self.logo_bg = Image(source='images/logo_image.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.1, 'y': 0.8})
-        self.layout.add_widget(self.logo_bg)
-        self.login_bg = Image(source='images/login_image.png', size_hint=(0.6, 0.1), pos_hint={'x': 0.2, 'y': 0.65})
-        self.layout.add_widget(self.login_bg)
 
         # 이메일 입력 창과 배경 이미지
-        self.email_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.48})
+        self.email_bg = Image(source='images/email_input.png', size_hint=(0.9, 0.12), pos_hint={'center_x': 0.5, 'top': 0.588}, allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.email_bg)
-        self.email_input = TextInput(hint_text='Email', multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.45},
-                                     background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
+        self.email_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, multiline=False, size_hint=(0.9, 0.05), pos_hint={'x': 0.173, 'top': 0.54},
+                                     background_color=(0, 0, 0, 0))
         self.layout.add_widget(self.email_input)
 
         # 비밀번호 입력 창과 배경 이미지
-        self.password_bg = Image(source='images/input_background.png', size_hint=(0.83, 0.1), pos_hint={'x': 0.08, 'y': 0.4})
+        self.password_bg = Image(source='images/password_input.png', size_hint=(0.9, 0.12), pos_hint={'center_x': 0.5, 'top': 0.478})
         self.layout.add_widget(self.password_bg)
-        self.password_input = TextInput(hint_text='Password', password=True, multiline=False, size_hint=(0.9, 0.1), pos_hint={'x': 0.1, 'y': 0.37},
-                                        background_color=(0, 0, 0, 0))  # 배경을 투명하게 설정
+        self.password_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, password=True, multiline=False, size_hint=(0.9, 0.05),
+                                        pos_hint={'x': 0.173, 'top': 0.422}, background_color=(0, 0, 0, 0))
         self.layout.add_widget(self.password_input)
 
-        self.status_label = Label(text='Please log in', size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.35})
 
-        # 로그인 버튼에 배경 이미지 추가
-        self.login_button = ImageButton(source='images/login_button.png', size_hint=(0.8, 0.1), pos_hint={'x': 0.1, 'y': 0.25})
+        self.login_save_label = Label(text='로그인 정보 저장', font_name=fontName2, font_size=13, size_hint=(0.237, 0.012),
+                                  pos_hint={'x': 0.173, 'top': 0.353}, color=(0.3922, 0.3922, 0.3922, 1))
+        self.layout.add_widget(self.login_save_label)
+
+        self.forget_password_label = Label(text='비밀번호를 잊으셨나요?', font_name=fontName2, font_size=13, size_hint=(0.336, 0.012),
+                                  pos_hint={'x': 0.58, 'top': 0.353}, color=(0.3922, 0.3922, 0.3922, 1))
+        self.layout.add_widget(self.forget_password_label)
+
+        # 로그인 버튼
+        self.login_button = ImageButton(source='images/login_button2.png', size_hint=(0.533, 0.093), pos_hint={'center_x': 0.5, 'top': 0.298})
         self.login_button.bind(on_press=self.login)
-
-        # 회원가입 버튼
-        self.signup_button = Button(text='회원가입하기', font_name=fontName, font_size=15, size_hint=(1.1, 0.05), pos_hint={'x': 0.09, 'y': 0.2}, background_color=(0, 0, 0, 0), color=(0, 0.7, 0.7, 1))
-        self.signup_button.bind(on_press=self.signup)
-        self.signup_label = Label(text='계정이 없나요?', font_name=fontName, font_size=15, size_hint=(0.6, 0.05), size=(150, 30), pos_hint={'x': 0.05, 'y': 0.2}, color=(0.1, 0.4, 0.8, 1))
-
-        # 상태 메시지 표시 레이블
-        self.status_label = Label(text='계속 사용하려면 로그인 하십시요', font_name=fontName, font_size=15, size_hint=(0.83, 0.1),
-                                  color=(0.1, 0.4, 0.8, 1),
-                                  pos_hint={'x': 0.08, 'y': 0.6})
-
-        self.layout.add_widget(self.status_label)
         self.layout.add_widget(self.login_button)
-        self.layout.add_widget(self.signup_button)
-        self.layout.add_widget(self.signup_label)
 
-        # 얼굴인증 촬영 테스트 버튼
-        self.second_verification_button = ImageButton(source='images/profile_picture.png', size_hint=(0.9, 0.1),
-                                                      pos_hint={'x': 0.07, 'y': 0.1})
+        self.signup_label = Label(text='계정이 없으신가요?', font_name=fontName1, font_size=15, size_hint=(0.2, 0.022),
+                                  pos_hint={'x': 0.32, 'top': 0.18}, color=(0.4039, 0.4039, 0.4039, 1), halign='left', valign='middle')
+        self.layout.add_widget(self.signup_label)
+        self.signup_button = Button(text='회원가입', font_name=fontName1, font_size=15, size_hint=(0.2, 0.022),
+                                    pos_hint={'x': 0.56, 'top': 0.18}, color=(0.4471, 0.749, 0.4706, 1), background_color=(0, 0, 0, 0))
+        self.signup_button.bind(on_press=self.signup)
+        self.layout.add_widget(self.signup_button)
+        self.or_label = Label(text='또는', font_name=fontName1, font_size=15, size_hint=(0.063, 0.022),
+                                  pos_hint={'center_x': 0.5, 'top': 0.13}, color=(0.3922, 0.3922, 0.3922, 1), halign='left', valign='middle')
+        self.layout.add_widget(self.or_label)
+        self.camera_auth_label = Label(text='얼굴인증 로그인', font_name=fontName1, font_size=17, size_hint=(0.327, 0.025),
+                                  pos_hint={'center_x': 0.5, 'top': 0.075}, color=(0.9608, 0.7608, 0.4196, 1), halign='left', valign='middle')
+        self.layout.add_widget(self.camera_auth_label)
+
+        # 얼굴인증 촬영 버튼
+        self.second_verification_button = ImageButton(source='images/camera_button.png', size_hint=(0.117, 0.058),
+                                                      pos_hint={'x': 0.817, 'top': 0.075})
         self.second_verification_button.bind(on_press=self.test_verification)
         self.layout.add_widget(self.second_verification_button)
 
@@ -79,7 +82,6 @@ class LoginScreen(Screen):
             users = users_ref.get()
 
             if not users:
-                self.status_label.text = 'No users found in the database.'
                 return
 
             # Firebase에서 사용자 데이터 검색
@@ -94,10 +96,9 @@ class LoginScreen(Screen):
                     home_screen.load_user_data(user_seq_no)
                     self.manager.current = 'home'
                     return
-            self.status_label.text = 'Invalid email or password.'
         except Exception as e:
-            self.status_label.text = f'Error logging in: {str(e)}'
+            pass
     def signup(self, instance):
-        self.manager.current = 'auth'
+        self.manager.current = 'phone_auth'
     def test_verification(self, instance):
         self.manager.current = 'secondVerification'
