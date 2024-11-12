@@ -8,12 +8,6 @@ from kivy.uix.image import Image
 from kivy.uix.screenmanager import Screen
 from screens.image_button import ImageButton
 from kivy.uix.button import Button
-from PIL import Image as PILImage
-
-# 원본 이미지를 고해상도로 로드한 후 리샘플링하여 저장
-img = PILImage.open("images/name_input.png")
-img = img.resize((555, 150), PILImage.LANCZOS)  # 크기 줄이기 및 고화질 리샘플링
-img.save("images/name_input_re.png")  # 리샘플링 후 저장
 
 
 fontName1 = 'LINESeedKR-Bd.ttf'
@@ -32,7 +26,7 @@ class SignupScreen(Screen):
         self.layout.add_widget(self.bg_image)
 
         # 이름 입력 창과 배경 이미지
-        self.name_bg = Image(source='images/name_input_re.png', size_hint=(0.9, 0.12),
+        self.name_bg = Image(source='images/name_input.png', size_hint=(0.9, 0.12),
                              pos_hint={'center_x': 0.5, 'top': 0.643})
         self.layout.add_widget(self.name_bg)
         self.name_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, multiline=False,
@@ -58,10 +52,6 @@ class SignupScreen(Screen):
                                         pos_hint={'x': 0.173, 'top': 0.367}, background_color=(0, 0, 0, 0))
         self.layout.add_widget(self.password_input)
 
-        self.login_save_label = Label(text='약관에 동의합니다.', font_name=fontName2, font_size=13, size_hint=(0.27, 0.012),
-                                      pos_hint={'x': 0.173, 'top': 0.298}, color=(0.3922, 0.3922, 0.3922, 1))
-        self.layout.add_widget(self.login_save_label)
-
         # 회원가입 버튼
         self.signup_button = ImageButton(source='images/signup_button2.png', size_hint=(0.533, 0.093), pos_hint={'center_x': 0.5, 'top': 0.248})
         self.signup_button.bind(on_press=self.signup)
@@ -80,6 +70,11 @@ class SignupScreen(Screen):
         self.add_widget(self.layout)
 
     def on_pre_enter(self):
+        # 입력 필드 초기화
+        self.name_input.text = ''
+        self.email_input.text = ''
+        self.password_input.text = ''
+
         if not self.user_seq_no:
             print("user_seq_no가 없습니다. 인증을 완료하고 오세요.")
         else:

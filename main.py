@@ -9,6 +9,7 @@ from firebase_admin import credentials, initialize_app, db  # db 객체 가져�
 from screens.start_screen import StartScreen
 from screens.login_screen import LoginScreen
 from screens.home_screen import HomeScreen
+from screens.info_screen import InfoScreen
 from screens.phone_auth_screen import PhoneAuthScreen
 from screens.face_auth_screen import FaceAuthScreen
 from screens.signup_screen import SignupScreen
@@ -55,6 +56,7 @@ class FirebaseApp(App):
         self.screen_manager.add_widget(FaceAuthScreen(name='face_auth'))
         self.screen_manager.add_widget(SignupScreen(name='signup'))
         self.screen_manager.add_widget(HomeScreen(name='home'))
+        self.screen_manager.add_widget(InfoScreen(name='info'))
         self.screen_manager.add_widget(TransferScreen(name='transfer'))
         self.screen_manager.add_widget(TransferCompleteScreen(name='transfer_complete'))
         self.screen_manager.add_widget(SignupVerification(name='signupVerification'))

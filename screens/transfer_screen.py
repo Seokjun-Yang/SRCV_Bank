@@ -38,7 +38,7 @@ class TransferScreen(Screen):
         self.back_button.bind(on_press=self.go_back_to_home)
         self.layout.add_widget(self.back_button)
         # "홈" 텍스트
-        self.home_text = Label(text="홈", font_name=fontName1, font_size=20, pos_hint={'x': 0.153, 'top': 0.933},
+        self.home_text = Label(text="홈", font_name=fontName1, font_size=20, pos_hint={'x': 0.153, 'top': 0.932},
                                size_hint=(0.046, 0.018), color=(0.447, 0.749, 0.471, 1))
         self.layout.add_widget(self.home_text)
         # 송금안내 텍스트
@@ -117,13 +117,15 @@ class TransferScreen(Screen):
 
         all_accounts = {}
         for user_seq_no, user_data in users_data.items():
-            account_data = user_data.get('account')
-            user_info = user_data.get('user_info')
-            if account_data and isinstance(account_data, dict) and user_info:
-                all_accounts[user_seq_no] = {
-                    'account_num_masked': account_data.get('account_num_masked', 'N/A'),
-                    'name': user_info.get('name', 'Unknown')
-                }
+            # user_data가 dict인지 확인하여 `bool` 타입이 아닌 경우에만 진행
+            if isinstance(user_data, dict):
+                account_data = user_data.get('account')
+                user_info = user_data.get('user_info')
+                if account_data and isinstance(account_data, dict) and user_info:
+                    all_accounts[user_seq_no] = {
+                        'account_num_masked': account_data.get('account_num_masked', 'N/A'),
+                        'name': user_info.get('name', 'Unknown')
+                    }
 
         if not all_accounts:
             return

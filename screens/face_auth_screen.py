@@ -96,9 +96,14 @@ class FaceAuthScreen(Screen):
         self.add_widget(self.layout)
 
     def on_enter(self):
+        self.complete_image.opacity = 0
+        self.complete_button.opacity = 0
+        self.auth_button.disabled = False
+
         if self.is_verified:
             self.show_complete_image()
     def verification(self, instance):
+        self.is_verified = True
         self.manager.current = 'signupVerification'
     def show_complete_image(self):
         anim = Animation(opacity=1, duration=0.5)
@@ -106,7 +111,12 @@ class FaceAuthScreen(Screen):
         anim.start(self.complete_button)
         self.auth_button.disabled = True
     def go_to_next_screen(self, instance):
+        self.complete_image.opacity = 0
+        self.complete_button.opacity = 0
         self.auth_button.disabled = False
+
+        self.is_verified = False
+
         self.manager.current = 'signup'
     def go_back_to_auth(self, instance):
         self.manager.current = 'phone_auth'

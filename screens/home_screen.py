@@ -1,3 +1,4 @@
+import requests
 from kivy.app import App
 from firebase_admin import db
 from kivy.uix.floatlayout import FloatLayout
@@ -7,8 +8,11 @@ from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
-from PIL import Image as PILImage
-from kivy.uix.popup import Popup
+from datetime import datetime
+import sounddevice as sd
+import numpy as np
+import base64
+
 from kivy.config import Config
 
 Config.set('graphics', 'dpi', '320')  # DPI를 높게 설정하여 텍스트와 화면을 선명하게
@@ -49,7 +53,6 @@ class HomeScreen(Screen):
 
         self.menu_button = ImageButton(source='images/menu_icon.png', allow_stretch=True, keep_ratio=False,
                                            size_hint=(0.083, 0.042), pos_hint={'x': 0.843, 'top': 0.948})
-        self.menu_button.bind(on_press=self.show_menu_popup)
         self.layout.add_widget(self.menu_button)
 
         # 카드형 계좌 정보 영역
@@ -105,10 +108,12 @@ class HomeScreen(Screen):
 
         self.voice_button = ImageButton(source='images/voice_icon.png', allow_stretch=True,
                                            size_hint=(0.18, 0.09), pos_hint={'center_x': 0.5, 'top': 0.105})
+        self.voice_button.bind(on_press=self.on_voice_button_pressed)
         self.layout.add_widget(self.voice_button)
 
         self.info_button = ImageButton(source='images/info_icon.png', allow_stretch=True, keep_ratio=False,
                                            size_hint=(0.073, 0.036), pos_hint={'x': 0.753, 'top': 0.081})
+        self.info_button.bind(on_press=self.go_to_my_page)
         self.layout.add_widget(self.info_button)
 
     def load_user_data(self, user_seq_no):
@@ -169,7 +174,6 @@ class HomeScreen(Screen):
         # Firebase에서 현재 표시된 계좌의 거래 데이터를 가져옵니다.
         transactions_ref = db.reference(f'users/{self.user_seq_no}/account/transactions')
         transactions_data = transactions_ref.get()
-        self.transaction_layout.clear_widgets()
 
         # 거래 내역이 없거나 초기 값만 있는 경우 확인
         if not transactions_data or (
@@ -180,25 +184,33 @@ class HomeScreen(Screen):
                 transactions_data[0].get('description') == "no transactions" and
                 transactions_data[0].get('type') == "정보 없음"
         ):
+            if self.scroll_view in self.layout.children:
+                self.layout.remove_widget(self.scroll_view)
 
-            empty_layout = FloatLayout(size_hint=(None, None), size=(200, 350))
-            empty_layout.pos_hint = {'center_x': 0.5, 'top': 0.2}  # 위치 조정
+            empty_layout = FloatLayout(size_hint=(1, 1))
 
             # 빈 거래 내역 이미지 추가
             empty_image = Image(source='images/empty_basket.jpg',
-                                size_hint=(None, None), size=(180, 180), pos_hint={'center_x': 0.5, 'top': 0.4})
+                                size_hint=(None, None), size=(180, 180), pos_hint={'center_x': 0.5, 'center_y': 0.33})
             empty_layout.add_widget(empty_image)
 
             # 거래 내역 없음 텍스트 추가
             no_transactions_label = Label(text="거래 내역이 없습니다", font_name=fontName1, font_size=20,
-                                          color=(0.267, 0.388, 0.278, 1), size_hint=(None, None), size=(200, 50), pos=(90, 110),
+                                          color=(0.267, 0.388, 0.278, 1), size_hint=(None, None), size=(200, 50),
+                                          pos_hint={'center_x': 0.5, 'center_y': 0.19},
                                           text_size=(200, None), halign="center", valign="middle")
             no_transactions_label.bind(size=no_transactions_label.setter('text_size'))
             empty_layout.add_widget(no_transactions_label)
+
             # 레이아웃에 빈 상태 레이아웃 추가
-            self.transaction_layout.add_widget(empty_layout)
+            self.layout.add_widget(empty_layout)
 
             return
+
+        if self.scroll_view not in self.layout.children:
+            self.layout.add_widget(self.scroll_view)
+
+        self.transaction_layout.clear_widgets()  # 기존 거래 내역을 초기화
 
         if isinstance(transactions_data, list):
             transactions = list(enumerate(transactions_data))  # 리스트인 경우
@@ -256,87 +268,61 @@ class HomeScreen(Screen):
         # 거래 내역 레이아웃의 높이를 동적으로 설정
         self.transaction_layout.height = len(transactions) * 70  # 레이블 수에 따라 동적 높이 설정
 
-    def open_menu(self, instance):
-        print("Menu button pressed")
+    def on_voice_button_pressed(self, instance):
+        # 음성 데이터를 녹음하여 base64로 변환
+        simulated_transcription = "원혁주에게 만원 보내줘"
 
-    def show_menu_popup(self, instance):
-        """팝업 창에 메뉴를 표시하는 함수"""
-        # 팝업 레이아웃 생성
-        popup_layout = BoxLayout(orientation='vertical', padding=[20, 20, 20, 20], spacing=10)
+        response = requests.post(
+            "https://us-central1-bank-a752e.cloudfunctions.net/recognizeSpeech",
+            json={"text": simulated_transcription}  # 음성 데이터 대신 임의의 텍스트 전송
+        )
+        if response.status_code == 200:
+            result = response.json()
+            recipient = result.get("recipient")
+            amount = result.get("amount")
 
-        # 닫기 버튼 이미지 (오른쪽 상단에 위치)
-        close_button = ImageButton(source='images/close_button.png', size_hint=(None, None), size=(30, 30),
-                                   pos_hint={'right': 1, 'top': 6})
+            if recipient and amount:
+                # 송금 화면을 가져와 수신자와 금액을 표시
+                transfer_screen = self.manager.get_screen('transfer')
+                transfer_screen.selected_receiver_account = self.find_user_by_name(recipient)
+                transfer_screen.account_info_label.text = f"{recipient}"
+                transfer_screen.amount_input.text = str(amount)
 
-        # 상단에 닫기 버튼 추가를 위한 상단 레이아웃
-        top_layout = FloatLayout(size_hint=(1, None), height=30)
-        top_layout.add_widget(close_button)
+                # 송금 화면으로 전환
+                self.manager.current = 'transfer'
+            else:
+                print("수신자 또는 금액 정보가 서버에서 올바르게 전달되지 않았습니다.")
+        else:
+            print("음성 인식 오류:", response.text)
+    def get_audio_data(self):
+        """사용자 음성을 녹음하고 음성 데이터를 Base64로 변환하여 반환"""
+        duration = 5  # 녹음 시간 (초)
+        sample_rate = 16000  # 샘플링 속도
 
-        # 메뉴 레이아웃
-        menu_layout = BoxLayout(orientation='vertical', spacing=15)
+        print("녹음을 시작합니다...")
+        audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='int16')
+        sd.wait()  # 녹음이 끝날 때까지 대기
+        print("녹음이 완료되었습니다.")
 
-        profile_image = Image(source='images/profile_picture.png', size_hint=(0.2, None), height=80,
-                              pos_hint={'center_x': 0.5})
-        name_label = Label(text='MAMADKARIMOV\nNAMOZ님\nSRV Bank 고객님', font_name=fontName1, font_size=16,
-                           size_hint=(1, None), height=80, halign='center', valign='middle', color=(1, 1, 1, 1))
-        name_label.bind(size=name_label.setter('text_size'))
+        # 음성 데이터를 Base64로 인코딩하여 반환
+        audio_data = np.squeeze(audio)
+        audio_base64 = base64.b64encode(audio_data.tobytes()).decode('utf-8')
 
-        # 프로필과 이름 추가
-        popup_layout.add_widget(profile_image)
-        popup_layout.add_widget(name_label)
+        return audio_base64
 
-        # 메뉴 항목 추가
-        menu_items = [
-            ("홈페이지", 'images/home_icon.png'),
-            ("마이데이터", 'images/data_icon.png'),
-            ("마이카드", 'images/card_icon.png'),
-            ("설정", 'images/setting_icon.png'),
-            ("회사 소개", 'images/company_icon.png'),
-            ("문의하기", 'images/mail_icon.png'),
-            ("앱 평가하기", 'images/star_icon.png'),
-        ]
+    def find_user_by_name(self, name):
+        """이름으로 사용자 정보 찾기 (Firebase에서 이름을 통한 조회를 시뮬레이션)"""
+        users_ref = db.reference('users')
+        users_data = users_ref.get()
+        for user_seq_no, user_info in users_data.items():
+            if user_info.get('user_info', {}).get('name') == name:
+                return user_seq_no
+        return None
 
-        for item_text, item_icon in menu_items:
-            menu_item = self.create_menu_item(item_text, item_icon)
-            menu_layout.add_widget(menu_item)
-
-        # 로그아웃 버튼 추가 (맨 아래에 배치)
-        logout_button = self.create_menu_item("로그아웃", 'images/logout_icon.png')
-        logout_button.children[1].bind(on_press=self.logout)  # 로그아웃 동작 연결
-        menu_layout.add_widget(logout_button)
-
-        # 팝업 창 레이아웃에 닫기 버튼과 메뉴 레이아웃 추가
-        popup_layout.add_widget(top_layout)
-        popup_layout.add_widget(menu_layout)
-
-        # 팝업 창 생성, 배경을 이미지로 설정
-        self.menu_popup = Popup(title='', content=popup_layout,
-                                size_hint=(0.9, 0.9),
-                                background='images/menu_background.png',  # 배경 이미지를 팝업 배경으로 설정
-                                background_color=(1, 1, 1, 1),  # 필요시 투명도 설정 가능
-                                auto_dismiss=True)
-
-        # 닫기 버튼 동작
-        close_button.bind(on_press=self.menu_popup.dismiss)
-
-        # 팝업 창 열기
-        self.menu_popup.open()
-
-    def create_menu_item(self, text, icon_path):
-        """아이콘과 텍스트가 있는 메뉴 항목을 생성하는 함수"""
-        menu_item_layout = BoxLayout(orientation='horizontal', padding=10, spacing=10, size_hint=(1, None), height=40)
-
-        # 아이콘 이미지
-        icon = Image(source=icon_path, size_hint=(None, None), size=(30, 30))
-        menu_item_layout.add_widget(icon)
-
-        # 메뉴 항목 레이블
-        label = Label(text=text, font_name=fontName2, font_size=14, size_hint=(1, None), height=20,
-                      halign='left', valign='middle')
-        label.bind(size=label.setter('text_size'))  # 텍스트 크기에 맞춰 정렬
-        menu_item_layout.add_widget(label)
-
-        return menu_item_layout
+    def go_to_my_page(self, instance):
+        my_page_screen = self.manager.get_screen('info')
+        my_page_screen.load_user_info(self.user_seq_no)
+        self.manager.current = 'info'
 
 class MyApp(App):
     def build(self):
