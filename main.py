@@ -1,16 +1,17 @@
 import os
 import threading
+import time
 from queue import PriorityQueue, Empty
 
-import pyttsx3
+import boto3
+import pyaudio
 from kivy.app import App
-from kivy.storage.jsonstore import JsonStore
 from kivy.uix.screenmanager import ScreenManager
 from kivy.core.window import Window  # 모바일 화면 크기 설정 (테스트용) 실제 앱 빌드에서는 주석처리해야 한다.
-import firebase_admin
 from firebase_admin import credentials, initialize_app, db  # db 객체 가져오기
 
 from SRCV_Bank.screens.face_auth_screen import FaceAuthScreen
+from SRCV_Bank.screens.info_screen import InfoScreen
 from SRCV_Bank.screens.phone_auth_screen import PhoneAuthScreen
 from SRCV_Bank.screens.start_screen import StartScreen
 from SRCV_Bank.screens.transfer_complete_screen import TransferCompleteScreen
@@ -26,8 +27,11 @@ from screens.login_fv_screen import login_FV_screen
 from kivy.uix.camera import Camera
 from screens.test import test_screen
 Window.size = (300, 600)
+from dotenv import load_dotenv
 
+load_dotenv()
 class FirebaseApp(App):
+
     def build(self):
         # Firebase 초기화
         cred_path = os.path.join(os.path.dirname(__file__), 'firebase', 'serviceAccountKey.json')
@@ -35,23 +39,21 @@ class FirebaseApp(App):
         initialize_app(cred, {
             'databaseURL': 'https://bank-a752e-default-rtdb.firebaseio.com'
         })
-
         # Camera 초기화
         self.camera = Camera(play=False, size_hint=(None, None))
         self.camera.size = Window.size
 
-        # tts 초기화
-        self.tts_engine = pyttsx3.init()
-        self.tts_queue = PriorityQueue()
-        self.is_speaking = False
-
-        # Queue에서 메시지를 비동기로 처리할 스레드 시작
-        threading.Thread(target=self._process_tts_queue, daemon=True).start()
-        def speak(message, priority=1):
-            if self.is_speaking:
-                self.stop_speaking()
-            self.tts_queue.put((priority, message))
-        self.speak = speak
+        # polly 초기화
+        self.polly = boto3.client('polly', region_name='us-east-1',#AWS_REGION
+                                  aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),#AWS_ACCESS_KEY_ID
+                                  aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'))#AWS_SECRET_ACCESS_KEY
+        # 오디오 초기화
+        self.audio = pyaudio.PyAudio()
+        # 현재 상태
+        self.current_stream = None
+        self.current_thread = None
+        self.stop_flag = threading.Event()
+        self.lock = threading.Lock()
 
         # ScreenManager 설정
         self.screen_manager = ScreenManager()
@@ -65,51 +67,71 @@ class FirebaseApp(App):
         self.screen_manager.add_widget(TransferCompleteScreen(name='transfer_complete'))
         self.screen_manager.add_widget(SignupVerification(name='signupVerification'))
         self.screen_manager.add_widget(AuthScreen(name='auth'))
-        self.screen_manager.add_widget(AuthCompleteScreen(name='auth_complete'))
+        #self.screen_manager.add_widget(AuthCompleteScreen(name='auth_complete'))
         self.screen_manager.add_widget(login_FV_screen(name='loginVerification'))
         self.screen_manager.add_widget(transfer_FV_screen(name='transferVerification'))
-        self.screen_manager.add_widget(test_screen(name='test_screen')) #테스트용
+
+        self.screen_manager.add_widget(InfoScreen(name='info'))
+
+
+
         return self.screen_manager
+
+    def speak_text(self, message, on_complete=None):
+        try:
+            if self.current_thread and self.current_thread.is_alive():
+                self.stop_flag.set()
+                self.current_thread.join()
+                self.stop_flag.clear()
+
+            response = self.polly.synthesize_speech(
+                Text=message,
+                OutputFormat="pcm",
+                VoiceId="Seoyeon"
+            )
+            audio_stream = response['AudioStream']
+
+            self.current_thread = threading.Thread(target=self.play_audio, args=(audio_stream,))
+            self.current_thread.start()
+            if on_complete:
+                threading.Thread(target=lambda: (self.current_thread.join(), on_complete())).start()
+        except Exception as e:
+            print(f'speak_text:{e}')
+
+    def play_audio(self, audio_stream):
+        with self.lock:
+            if self.current_stream:
+                self.current_stream.stop_stream()
+                self.current_stream.close()
+                self.current_stream = None
+
+            stream = self.audio.open(
+                format=self.audio.get_format_from_width(2),
+                channels=1,
+                rate=16000,
+                output=True
+            )
+            self.current_stream = stream
+
+            while not self.stop_flag.is_set():
+                data = audio_stream.read(1024)
+                if not data:
+                    break
+                stream.write(data)
+
+            stream.stop_stream()
+            stream.close()
+            self.current_stream = None
 
     def on_stop(self):
         if self.camera:
             self.camera.play = False
             self.camera = None
-        if self.tts_engine:
-            self.tts_engine.stop()
-            self.tts_engine = None
 
-    def _process_tts_queue(self):
-        while True:
-            try:
-                #message = self.tts_queue.get(timeout=1)  # Queue에서 메시지 가져오기
-                priority, message = self.tts_queue.get(timeout=1)
-                self.is_speaking = True  # TTS 재생 중 표시
-                self.tts_engine.say(message)
-                self.tts_engine.runAndWait()
-                self.is_speaking = False  # TTS 재생 완료 표시
-                self.tts_queue.task_done()
-            except Empty:
-                continue  # 대기 중인 메시지가 없으면 루프 유지
-
-    def _speak_async(self, message):
-        if self.is_speaking:
-            self.tts_engine.stop()  # 현재 TTS 중단
-            self.is_speaking = False
-
-    def stop_speaking(self):
-        # pyttsx3는 직접적으로 멈추는 기능이 없지만, 비동기 스레드를 통해 정지 기능을 추가할 수 있음
-        if self.is_speaking:
-            self.tts_engine.stop()  # 현재 TTS 중단
-            self.is_speaking = False
-
-        # 큐 비우기
-        while not self.tts_queue.empty():
-            try:
-                self.tts_queue.get_nowait()
-                self.tts_queue.task_done()
-            except Empty:
-                break
+        if self.audio:
+            self.audio.terminate()
+    def delay(self, dt):
+        pass
 
 if __name__ == '__main__':
     FirebaseApp().run()

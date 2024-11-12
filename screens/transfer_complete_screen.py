@@ -1,3 +1,5 @@
+from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.behaviors import ButtonBehavior
@@ -16,6 +18,10 @@ class ClickableLabel(ButtonBehavior, Label):
 
 fontName1 = 'LINESeedKR-Bd.ttf'
 fontName2 = 'LINESeedKR-Rg.ttf'
+
+
+
+
 
 class TransferCompleteScreen(Screen):
     def __init__(self, **kwargs):
@@ -168,4 +174,8 @@ class TransferCompleteScreen(Screen):
 
     def go_back_to_home(self, instance):
         """홈 화면으로 돌아가는 함수"""
-        self.manager.current = 'home'
+        App.get_running_app().speak_text(f'송금 완료되었습니다!')#잔액이 {balance_amt}원으로 업데이트 되었습니다.
+        Clock.schedule_once(lambda dt:self.change_screen('home'), 2)
+
+    def change_screen(self, screen):
+        self.manager.current = screen

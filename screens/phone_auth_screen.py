@@ -1,4 +1,7 @@
 import webbrowser
+
+from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.image import Image
@@ -15,6 +18,7 @@ class PhoneAuthScreen(Screen):
     def __init__(self, **kwargs):
         super(PhoneAuthScreen, self).__init__(**kwargs)
         self.user_seq_no = ""
+        self.listener = None
 
         # 화면 레이아웃 설정
         self.layout = FloatLayout()
@@ -87,21 +91,32 @@ class PhoneAuthScreen(Screen):
 
     def on_enter(self):
         self.start_listener()
+        App.get_running_app().speak_text('번호인증 단계입니다. 아래의 버튼을 눌러주세요.')
+        Clock.schedule_once(lambda dt:App.get_running_app().delay, 2)
+
+    def on_leave(self):
+        self.stop_listener()
 
     def start_listener(self):
         try:
             self.ref = db.reference('users')
-            self.ref.listen(self.user_seq_no_listener)
-            print("Firebase 리스너가 시작되었습니다.")
+            self.listener = self.ref.listen(self.user_seq_no_listener)
         except Exception as e:
             print(f"리스너 시작 중 오류 발생: {str(e)}")
 
+    def stop_listener(self):
+        try:
+            if self.listener:
+                self.listener.close()
+                self.listener = None
+                print("Firebase 리스너가 중지되었습니다.")
+            else:
+                print("Listener is already None or not initialized.")
+        except Exception as e:
+            print(f"리스너 중지 중 오류 발생: {str(e)}")
+
     def user_seq_no_listener(self, event):
         try:
-            print("Firebase 리스너가 호출되었습니다.")
-            print(f"리스너 데이터: {event.data}")
-            print(f"리스너 경로: {event.path}")
-
             # event.path에서 user_seq_no 부분 추출
             path_parts = event.path.split('/')
 
@@ -113,7 +128,6 @@ class PhoneAuthScreen(Screen):
 
                 # 업데이트된 user_seq_no에 대한 데이터 출력 (필요에 따라 주석 처리 가능)
                 updated_data = db.reference(f'users/{self.user_seq_no}').get()
-                print(f"업데이트된 user_seq_no에 해당하는 데이터: {updated_data}")
 
                 if self.user_seq_no:
                     self.show_complete_image()
@@ -143,19 +157,29 @@ class PhoneAuthScreen(Screen):
             print(f"번호 인증 요청 중 오류 발생: {str(e)}")
 
     def show_complete_image(self):
+
         # 인증 완료 이미지와 완료 버튼을 서서히 표시하는 애니메이션 추가
         anim = Animation(opacity=1, duration=0.5)
         anim.start(self.complete_image)
         anim.start(self.complete_button)
         self.auth_button.disabled = True
+        App.get_running_app().speak_text('번호 인증이 완료되었습니다. 다음 화면으로 이동합니다.')
+        Clock.schedule_once(lambda dt:App.get_running_app().delay, 3)
 
     def go_to_next_screen(self, instance):
         # 인증 완료 버튼을 누르면 다음 화면으로 이동
         signup_screen = self.manager.get_screen('signup')
         signup_screen.user_seq_no = self.user_seq_no  # user_seq_no 전달
         print(f"SignupScreen으로 user_seq_no 전달: {self.user_seq_no}")
+        self.complete_image.opacity = 0
+        self.complete_button.opacity = 0
         self.auth_button.disabled = False
-        self.manager.current = 'face_auth'
+
+        Clock.schedule_once(lambda dt:self.change_screen('face_auth'), 1)
 
     def go_back_to_start(self, instance):
-        self.manager.current = 'start'
+        App.get_running_app().speak_text('이전 화면으로 돌아갑니다.')
+        Clock.schedule_once(lambda dt:App.get_running_app().delay, 1)
+        Clock.schedule_once(lambda dt:self.change_screen('start'), 1)
+    def change_screen(self, screen):
+        self.manager.current = screen

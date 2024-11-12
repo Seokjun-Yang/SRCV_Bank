@@ -1,3 +1,5 @@
+from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from firebase_admin import db
@@ -19,6 +21,9 @@ class FaceAuthScreen(Screen):
         super(FaceAuthScreen, self).__init__(**kwargs)
         self.user_seq_no = ""
         self.is_verified = False
+
+        # 딜레이
+        self.delay = App.get_running_app().delay
 
         # 레이아웃 설정
         self.layout = FloatLayout()
@@ -49,12 +54,12 @@ class FaceAuthScreen(Screen):
                                 color=(0.4471, 0.749, 0.4706, 1))
         self.layout.add_widget(self.step_label)
         self.face_text = Image(source='images/face_text.png', size_hint=(0.4, 0.06),
-                                pos_hint={'center_x': 0.5, 'top': 0.795})
+                               pos_hint={'center_x': 0.5, 'top': 0.795})
         self.layout.add_widget(self.face_text)
 
         # 안내 아이콘
         self.face_icon = Image(source='images/facerecognition.png', size_hint=(0.5, 0.25),
-                                pos_hint={'center_x': 0.5, 'top': 0.677})
+                               pos_hint={'center_x': 0.5, 'top': 0.677})
         self.layout.add_widget(self.face_icon)
 
         # 안내 문구
@@ -62,7 +67,7 @@ class FaceAuthScreen(Screen):
                                   pos_hint={'x': 0.107, 'top': 0.367})
         self.layout.add_widget(self.twinkle_icon)
         self.camera_icon = Image(source='images/camera_icon.png', size_hint=(0.07, 0.033),
-                              pos_hint={'x': 0.107, 'top': 0.297})
+                                 pos_hint={'x': 0.107, 'top': 0.297})
         self.layout.add_widget(self.camera_icon)
 
         self.info1_label = Label(text="버튼을 눌러 얼굴 인증을 시작해 주세요.", font_name=fontName1, font_size=16, halign="left",
@@ -96,9 +101,17 @@ class FaceAuthScreen(Screen):
         self.add_widget(self.layout)
 
     def on_enter(self):
+        App.get_running_app().speak_text('얼굴인증 단계입니다. 아래의 버튼을 눌러주세요.')
+        Clock.schedule_once(lambda dt: App.get_running_app().delay, 2)
+
+        self.complete_image.opacity = 0
+        self.complete_button.opacity = 0
+        self.auth_button.disabled = False
+
         if self.is_verified:
             self.show_complete_image()
     def verification(self, instance):
+        self.is_verified = True
         self.manager.current = 'signupVerification'
     def show_complete_image(self):
         anim = Animation(opacity=1, duration=0.5)
@@ -106,7 +119,20 @@ class FaceAuthScreen(Screen):
         anim.start(self.complete_button)
         self.auth_button.disabled = True
     def go_to_next_screen(self, instance):
+        self.complete_image.opacity = 0
+        self.complete_button.opacity = 0
         self.auth_button.disabled = False
-        self.manager.current = 'signup'
+
+        self.is_verified = False
+        App.get_running_app().speak_text("다음 화면으로 이동합니다.")
+        Clock.schedule_once(self.delay, 1)
+        Clock.schedule_once(self.change_screen('singup'), 1)
     def go_back_to_auth(self, instance):
-        self.manager.current = 'phone_auth'
+        App.get_running_app().speak_text("이전 화면으로 돌아갑니다.")
+        Clock.schedule_once(self.delay, 1)
+        Clock.schedule_once(lambda dt:self.change_screen('phone_auth'), 1)
+
+
+    def change_screen(self, screen):
+        self.manager.current = screen
+

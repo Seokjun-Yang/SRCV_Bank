@@ -47,14 +47,11 @@ class SignupVerification(Screen):
             os.mkdir(self.storage_path)
         self.image_path = os.path.join(self.storage_path, self.image_name)
 
-        #
         self.second = 5
         # 라벨로 상태 표시
         self.str = f"{self.second}초 후 자동으로 사진이 촬영됩니다..."
-        #print(f"self.str:{self.str}")
-        self.status_label = Label(text=self.str, font_name=fontName2, size_hint=(None, None), size=(200, 50),pos_hint={'center_x': 0.5, 'top': 0.8}, color=(0.255, 0.412, 0.882, 1))
-        #print(self.status_label)
 
+        self.status_label = Label(text=self.str, font_name=fontName2, size_hint=(None, None), size=(200, 50),pos_hint={'center_x': 0.5, 'top': 0.8}, color=(0.255, 0.412, 0.882, 1))
 
         self.layout.add_widget(self.status_label)
 
@@ -62,17 +59,6 @@ class SignupVerification(Screen):
         self.camera = None
 
         self.add_widget(self.layout)
-    def mt_tts(self, message):
-        threading.Thread(target=self.speak, args=(message,) ).start()
-        threading.Thread(target=self.speak, args=[i for i in range(self.second, 1, -1)]).start()
-    def count(self, count):
-        for i in range(self.second, 1, -1):
-            time.sleep(1)
-            self.speak(str(i))
-
-    def speak(self, message):
-        app = App.get_running_app()
-        app.speak(message)
 
     def update_camera_texture(self, dt):
         if self.camera.play:
@@ -114,17 +100,14 @@ class SignupVerification(Screen):
         if not self.camera.play:
             self.camera.play = True
             self.camera.size_hint = (None, None)
-            #self.camera.resolution = win_size
             self.camera.size = win_size
             self.camera.pos = (0,0)
-            #self.layout.add_widget(self.camera)
-
 
 
     def on_camera_ready(self, instance):
         # 카메라 텍스처가 준비되었을 때 play 시작
+
         print("Camera texture is ready")
-        #self.camera.play = True
     def on_enter(self, *args):
         app = App.get_running_app()
         self.camera = app.camera
@@ -141,16 +124,10 @@ class SignupVerification(Screen):
             # self.layout.add_widget(self.camera)
             self.camera.play = True
 
-        self.mt_tts(self.str)
+        App.get_running_app().speak_text(f"화면에 얼굴을 잘 맞춰주세요. {self.second}초 후 자동으로 촬영됩니다.")
+        Clock.schedule_once(self.capture_image, self.second+1)#self.second
 
-        time.sleep(1)
-        # 3초 후에 자동으로 촬영 함수 호출
-        Clock.schedule_once(self.capture_image, self.second)  # 3초 후에 자동으로 촬영
-
-        pass
     def on_pre_enter(self, *args):
-        #self.initCamera()
-        #self.camera.play = True
         pass
 
     def check_camera_ready(self, dt):
@@ -243,10 +220,10 @@ class SignupVerification(Screen):
         self.capture_image(instance)  # 새 이미지 촬영 및 저장
 
     def on_success(self, second):
-        """인증 성공 시 호출되는 함수"""
-        # 인증 성공 시 정상적으로 기능 수행 가능(입출금 등)
-        #print("성공적으로 인증되었습니다!")  # 출력 완료
-        self.manager.current = 'signup'
+        App.get_running_app().speak_text('회원가입 화면으로 이동합니다.')
+        Clock.schedule_once(lambda dt:self.change_screen('signup'), 2)
+    def change_screen(self, screen):
+        self.manager.current = screen
 
     def init_opencv_camera(self):
         self.capture = cv2.VideoCapture(0)  # 0번 카메라 장치 사용

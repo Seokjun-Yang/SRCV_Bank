@@ -40,13 +40,6 @@ class transfer_FV_screen(Screen):
 
         self.add_widget(self.layout)
 
-    def mt_tts(self, message):
-        threading.Thread(target=self.speak, args=(message,) ).start()
-
-    def speak(self, message):
-        app = App.get_running_app()
-        app.speak(message)
-
     def initCamera(self):#, seconds
         win_size = Window.size
         if not self.camera:
@@ -68,44 +61,34 @@ class transfer_FV_screen(Screen):
             self.camera.size = win_size
             self.camera.pos = (0,0)
             #self.layout.add_widget(self.camera)
+
     def on_enter(self, *args):
-        app = App.get_running_app()
-        self.camera = app.camera
-        self.camera.size = Window.size
-        if not self.camera:
-            self.camera = app.camera
-            self.layout.add_widget(self.camera)
-            print(f"not self.camera: {self.camera}")
-        else:
-            self.layout.add_widget(self.camera)
-            print(f"self.camera: {self.camera}")
+        self.camera.play = True
+        self.layout.add_widget(self.camera)
 
-        if not self.camera.play:
-            # self.layout.add_widget(self.camera)
-            self.camera.play = True
-
-
-        self.mt_tts(self.str)
-        Clock.schedule_once(self.capture_and_authenticate, self.second)
+        App.get_running_app().speak_text(f"화면에 얼굴을 잘 맞춰주세요. {self.second}초 후 자동으로 촬영됩니다.")
+        Clock.schedule_once(self.capture_and_authenticate, self.second+1)#self.second
 
     def on_pre_enter(self, *args):
+        self.camera = App.get_running_app().camera
+        self.camera.size = Window.size
+        self.camera.play = True
+        self.camera.size_hint = (None, None)
+        #self.camera.pos = (0, 0)
         print("Camera started")
-        #self.initCamera()
 
     def on_leave(self, *args):
         if self.camera:
             print("Camera stopped")
-            self.camera.play = False  # 화면을 벗어날 때 카메라 끄기
+            self.camera.play = False  # 카메라 끄기
             self.layout.remove_widget(self.camera)  # 위젯에서 카메라 삭제
             self.camera = None  # 카메라 객체 해제
+            gc.collect()  # 메모리 정리
+        #self.executor.shutdown(wait=False)
 
     def go_back(self, instance):
         self.manager.current = 'home'  # home 화면으로 이동
 
-    # 테스트 버튼
-    def on_test_button_press(self, instance):
-        """테스트 버튼을 눌러 인증을 시도합니다."""
-        self.capture_and_authenticate(instance)
 
     def capture_and_authenticate(self, instance):
         """카메라에서 사진을 촬영하고 인증을 진행합니다."""
@@ -126,31 +109,25 @@ class transfer_FV_screen(Screen):
                 frame_bytes = self.image_to_bytes(frame)
                 print(f'frame bytes:{frame_bytes}')
 
-                # 저장될 경로 설정
-                #registered_image_path = self.image_path #os.path.join(self.storage_path, f".jpg") # 파일명 변경 예정 f'test.jpg'/
-                # 텍스처를 이미지로 변환  이부분보기
-                #frame = self.texture_to_image(texture)
-                #frame.save(registered_image_path)
-
                 # 인증 시도 -> 매니저 사용
-                #is_authenticated = self.authenticate_user(registered_image_path, frame_bytes)
                 face_verification = face_varification_manager(frame_bytes)
-                is_authenticated = face_verification.perform_auth('transfer', 'transfer')
+                is_authenticated = face_verification.perform_auth('transfer')
 
                 if is_authenticated:
                     self.status_label.text = "인증 성공했습니다."
-                    self.mt_tts("인증 성공했습니다.")
-                    self.on_success()
-                    #self.verification()
-
+                    #Clock.schedule_once(lambda dt: App.get_running_app().speak_text("인증에 성공했습니다."), 1)
+                    Clock.schedule_once(lambda dt: self.on_success(), 2)
                 else:
                     self.failed_attempts += 1
                     if self.failed_attempts >= self.max_attempts:
-                        self.status_label.text = "can not verifify more."
+                        self.status_label.text = "더 이상 인증할 수 없습니다."
+                        Clock.schedule_once(App.get_running_app().speak_text('이전 화면으로 돌아갑니다.'))
+                        Clock.schedule_once(self.change_screen('login'), 4)
                         # 이전 화면 복귀 혹은 더 이상 재시도를 하지 않도록 종료 처리 가능
                     else:
-                        self.status_label.text = f"auth failed. {self.failed_attempts}/{self.max_attempts} tried."
-                        Clock.schedule_once(self.capture_and_authenticate, 3)
+                        self.status_label.text = f"인증에 실패했습니다. {self.failed_attempts}/{self.max_attempts} 번."
+                        Clock.schedule_once(App.get_running_app().speak_text('인증에 실패했습니다. 얼굴을 잘 보여주세요.'))
+                        Clock.schedule_once(self.capture_and_authenticate, 5)
 
             except Exception as e:
                 self.status_label.text = f"오류 발생: {str(e)}"
@@ -188,9 +165,9 @@ class transfer_FV_screen(Screen):
 
     def on_success(self):
         print("인증되었습니다!")
+        App.get_running_app().speak_text('인증되었습니다.')
+        Clock.schedule_once(lambda dt:self.change_screen('transfer'), 3)
+        #self.manager.current = 'transfer'
 
-        #transfer_screen = self.manager.get_screen('transfer')
-        #home_screen.load_user_data('1101058858')  # user_seq_no
-        self.manager.current = 'transfer'
-
-        #App.get_running_app().stop()
+    def change_screen(self, screen):
+        self.manager.current = screen

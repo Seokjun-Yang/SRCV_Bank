@@ -57,45 +57,30 @@ class StartScreen(Screen):
         self.add_widget(self.layout)
 
     def go_to_login(self, instance):
-        App.get_running_app().stop_speaking()
-        self.on_speaking('로그인 화면으로 이동합니다.', priority=0)
-        '''self.event = Clock.schedule_once(
-            lambda dt: App.get_running_app().speak('로그인 화면으로 이동합니다.'), 0.5)'''
-        Clock.schedule_once(lambda dt:self.change_screen('login'), 2)
+        app = App.get_running_app()
+        app.speak_text('로그인 화면으로 이동합니다.')
+        Clock.schedule_once(lambda dt:self.change_screen('login'), 3)
 
 
     def go_to_signup(self, instance):
-        App.get_running_app().stop_speaking()
-        self.on_speaking('회원가입 화면으로 이동합니다.', priority=0)
+        app = App.get_running_app()
+        app.speak_text('회원가입 화면으로 이동합니다.')
+        #self.on_speaking('회원가입 화면으로 이동합니다.', priority=0)
         '''self.event = Clock.schedule_once(
             lambda dt: App.get_running_app().speak('회원가입 화면으로 이동합니다.'), 0.5)'''
-        Clock.schedule_once(lambda dt:self.change_screen('phone_auth'), 2)
+        Clock.schedule_once(lambda dt:self.change_screen('phone_auth'), 3)
 
 
     def on_pre_enter(self, *args):
         app = App.get_running_app()
-        app.stop_speaking()
+        #app.stop_speaking()
         tts = f'{self.text1.text}, {self.text2.text}. 로그인 화면이나 회원가입 화면으로 이동해주세요.'
         #self.event = Clock.schedule_once(lambda dt: app.speak(tts), 1)
-        #tts = '계정이 있다면 로그인을, 없다면 회원가입 버튼을 눌러주세요.'
-        self.on_speaking(tts, priority=0)
+        tts = '계정이 있다면 로그인을, 없다면 회원가입 버튼을 눌러주세요.'
+        #self.on_speaking(tts, priority=0)
+        app.speak_text(tts)
 
-    def cancel_speak(self):
-        # say_hi 스케줄링을 해제하는 함수
-        app = App.get_running_app()
-        app.stop_speaking()
-        if self.event:
-            Clock.unschedule(self.event)
-            self.event = None
 
-    def on_speaking(self, message, priority = 1):
-        # 현재 메시지가 출력 중이면 취소
-        App.get_running_app().stop_speaking()
-        # 회원가입 버튼 클릭 시 메시지 출력 (한 번만 출력)
-        self.event = Clock.schedule_once(
-            lambda dt: App.get_running_app().speak(message, priority),
-            1
-        )
 
     def change_screen(self, screen):
         self.manager.current = screen

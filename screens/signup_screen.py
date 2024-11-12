@@ -6,6 +6,7 @@ import time
 import requests
 from firebase_admin import db
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
@@ -33,13 +34,13 @@ class SignupScreen(Screen):
         self.layout = FloatLayout()
         self.user_seq_no = ""
         self.user_data = {}
-
+        self.delay = App.get_running_app().delay
         # 배경 이미지 추가
         self.bg_image = Image(source='images/signup_background.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg_image)
 
         # 이름 입력 창과 배경 이미지
-        self.name_bg = Image(source='images/name_input_re.png', size_hint=(0.9, 0.12),
+        self.name_bg = Image(source='images/name_input.png', size_hint=(0.9, 0.12),
                              pos_hint={'center_x': 0.5, 'top': 0.643})
         self.layout.add_widget(self.name_bg)
         self.name_input = TextInput(hint_text='I', font_name=fontName1, font_size=18, multiline=False,
@@ -65,10 +66,6 @@ class SignupScreen(Screen):
                                         pos_hint={'x': 0.173, 'top': 0.367}, background_color=(0, 0, 0, 0))
         self.layout.add_widget(self.password_input)
 
-        self.login_save_label = Label(text='약관에 동의합니다.', font_name=fontName2, font_size=13, size_hint=(0.27, 0.012),
-                                      pos_hint={'x': 0.173, 'top': 0.298}, color=(0.3922, 0.3922, 0.3922, 1))
-        self.layout.add_widget(self.login_save_label)
-
         # 회원가입 버튼
         self.signup_button = ImageButton(source='images/signup_button2.png', size_hint=(0.533, 0.093),
                                          pos_hint={'center_x': 0.5, 'top': 0.248})
@@ -85,16 +82,17 @@ class SignupScreen(Screen):
         self.login_button.bind(on_press=self.login)
         self.layout.add_widget(self.login_button)
 
-        #self.add_widget(self.layout)
-
-        #  얼굴인증 촬영 테스트 버튼
-        """self.signup_verification_button = ImageButton(source='images/profile_picture.png', size_hint=(0.9, 0.1), pos_hint={'x': 0.07, 'y': 0.1})
-        self.signup_verification_button.bind(on_press=self.verification)
-        self.layout.add_widget(self.signup_verification_button)"""
-
         self.add_widget(self.layout)
 
+    def on_enter(self, *args):
+        App.get_running_app().speak_text('아래의 빈칸을 모두 채워 회원가입을 완료해주세요.')
+        Clock.schedule_once(lambda dt:App.get_running_app().delay, 2)
+
     def on_pre_enter(self):
+        # 입력 필드 초기화
+        self.name_input.text = ''
+        self.email_input.text = ''
+        self.password_input.text = ''
         if not self.user_seq_no:
             print("user_seq_no가 없습니다. 인증을 완료하고 오세요.")
         else:
@@ -111,7 +109,8 @@ class SignupScreen(Screen):
         password = self.password_input.text
 
         if not all([name, email, password]):
-            print('모든 입력 필드를 채워주세요.')
+            print('')
+            App.get_running_app().speak_text("모든 입력 필드를 채워주세요.")
             return
 
         try:
@@ -138,11 +137,13 @@ class SignupScreen(Screen):
                     }
                 })
                 print(f'회원가입 완료: {email}')
-                #tts와 파일명 변경
-                # self.rename_image() #저장된 이미지 이름을 user_seq_no로 변경
-                # self.tts() #동작설명
-                self.manager.current = 'login'
+                self.rename_image()
+                App.get_running_app().speak_text('회원가입이 완료되었습니다.')
+                Clock.schedule_once(lambda dt:self.delay, 1)
+                Clock.schedule_once(lambda dt:self.change_screen('login'),1)
             else:
+                App.get_running_app().speak('가입된 사용자입니다.')
+                Clock.schedule_once(lambda dt:self.delay, 2)
                 error_message = data.get("error", {}).get("message", "Unknown error")
                 print(f'Signup error: {error_message}')
 
@@ -150,12 +151,9 @@ class SignupScreen(Screen):
             print(f'Error signing up: {str(e)}')
 
     def login(self, instance):
-        self.manager.current = 'login'
+        App.get_running_app().speak_text('로그인 화면으로 이동합니다.')
+        Clock.schedule_once(lambda dt:self.change_screen('login'), 2)
 
-    def tts(self):
-        app = App.get_running_app()
-        threading.Thread(target=app.speak, args=("회원가입이 완료되었습니다.",)).start()
-        time.sleep(1)
     def rename_image(self):
         # 이미지 이름
         self.image_name = 'signup_temp.jpg'
